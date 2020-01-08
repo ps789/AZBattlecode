@@ -14,6 +14,7 @@ public strictfp class RobotPlayer {
         Direction.WEST,
         Direction.NORTHWEST
     };
+
     static RobotType[] spawnedByMiner = {RobotType.REFINERY, RobotType.VAPORATOR, RobotType.DESIGN_SCHOOL,
             RobotType.FULFILLMENT_CENTER, RobotType.NET_GUN};
 
