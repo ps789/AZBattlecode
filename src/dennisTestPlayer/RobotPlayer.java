@@ -2,6 +2,8 @@ package dennisTestPlayer;
 import battlecode.common.*;
 import org.omg.CORBA.MARSHAL;
 
+import java.util.Map;
+
 public strictfp class RobotPlayer {
     static RobotController rc;
 
@@ -21,18 +23,18 @@ public strictfp class RobotPlayer {
     static int turnCount;
 
     static MapLocation myHQ;
-    static MapLocation enemyHQ;
+    static Direction mySide;
 
     /**
      * run() is the method that is called when a robot is instantiated in the Battlecode world.
      * If this method returns, the robot dies!
      **/
     @SuppressWarnings("unused")
-    public static void run(RobotController rc) throws GameActionException {
+    public static void run(RobotController paramRC) throws GameActionException {
 
         // This is the RobotController object. You use it to perform actions from this robot,
         // and to get information on its current status.
-        RobotPlayer.rc = rc;
+        RobotPlayer.rc = paramRC;
         turnCount = 0;
         System.out.println("I'm a " + rc.getType() + " and I just got created!");
 
@@ -52,10 +54,22 @@ public strictfp class RobotPlayer {
     }
 
     static void runHQ() throws GameActionException {
+        myHQ = rc.getLocation();
+        int directionInt;
+        if(myHQ.x < rc.getMapWidth()/2) {
+            mySide = Direction.WEST;
+            directionInt = 3;
+        } else {
+            mySide = Direction.EAST;
+            directionInt = 1;
+        }
+
+        rc.submitTransaction(new int[] {myHQ.x, myHQ.y, 11211999, 5963, directionInt}, 8);
+        System.out.println(Clock.getBytecodeNum());
         while(true) {
             turnCount++;
             if(rc.isReady()) {
-                tryBuild(RobotType.MINER,Direction.NORTH);
+                tryBuild(RobotType.MINER, mySide.opposite());
             }
             Clock.yield();
         }
@@ -64,6 +78,10 @@ public strictfp class RobotPlayer {
     static void runMiner() throws GameActionException {
         while(true) {
             turnCount++;
+            System.out.println(turnCount);
+            if(rc.getRoundNum() > 1) {
+                readInitialMessage();
+            }
             if(rc.isReady()) {
                 tryBuild(RobotType.VAPORATOR,Direction.NORTH);
             }
@@ -207,16 +225,22 @@ public strictfp class RobotPlayer {
         } else return false;
     }
 
+    static void readInitialMessage() throws GameActionException {
+        int round = 1;
+        Transaction[] roundBlock;
 
-    static void tryBlockchain() throws GameActionException {
-        if (turnCount < 3) {
-            int[] message = new int[7];
-            for (int i = 0; i < 7; i++) {
-                message[i] = 123;
+        while(round < rc.getRoundNum()) {
+            roundBlock = rc.getBlock(round);
+            for(Transaction t : roundBlock) {
+                if(t.getMessage().length == 5 && t.getMessage()[2] == 11211999) {
+                    for (int i = 0; i < t.getMessage().length; i++) {
+                        myHQ = new MapLocation(t.getMessage()[0], t.getMessage()[1]);
+                        mySide = directions[t.getMessage()[4]];
+                    }
+                    round += rc.getRoundNum();
+                }
             }
-            if (rc.canSubmitTransaction(message, 10))
-                rc.submitTransaction(message, 10);
+            round++;
         }
-        // System.out.println(rc.getRoundMessages(turnCount-1));
     }
 }
