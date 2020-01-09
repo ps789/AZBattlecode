@@ -29,39 +29,48 @@ public class Graph {
 	  }
 	  for(int i = 0; i< 10; i++) {
 		  for(int j = 0; j< 10; j++) {
-			  if(Math.abs(nodes[i][j].getElevation() - nodes[i][j+1].getElevation()) <= 3) {
-				  nodes[i][j].addNeighbor(nodes[i][j+1]);
-				  nodes[i][j+1].addNeighbor(nodes[i][j]);
-			  }
-			  if(Math.abs(nodes[i][j].getElevation() - nodes[i+1][j+1].getElevation()) <= 3) {
-				  nodes[i][j].addNeighbor(nodes[i+1][j+1]);
-				  nodes[i+1][j+1].addNeighbor(nodes[i][j]);
-			  }
-			  if(Math.abs(nodes[i][j].getElevation() - nodes[i+1][j].getElevation()) <= 3) {
-				  nodes[i][j].addNeighbor(nodes[i+1][j]);
-				  nodes[i+1][j].addNeighbor(nodes[i][j]);
+			  if(nodes[i][j].isAvailable()) {
+				  if(Math.abs(nodes[i][j].getElevation() - nodes[i][j+1].getElevation()) <= 3 
+						  && nodes[i][j+1].isAvailable()) {
+					  nodes[i][j].addNeighbor(nodes[i][j+1]);
+					  nodes[i][j+1].addNeighbor(nodes[i][j]);
+				  }
+				  if(Math.abs(nodes[i][j].getElevation() - nodes[i+1][j+1].getElevation()) <= 3
+						  && nodes[i+1][j+1].isAvailable()) {
+					  nodes[i][j].addNeighbor(nodes[i+1][j+1]);
+					  nodes[i+1][j+1].addNeighbor(nodes[i][j]);
+				  }
+				  if(Math.abs(nodes[i][j].getElevation() - nodes[i+1][j].getElevation()) <= 3
+						  && nodes[i+1][j].isAvailable()) {
+					  nodes[i][j].addNeighbor(nodes[i+1][j]);
+					  nodes[i+1][j].addNeighbor(nodes[i][j]);
+				  }
 			  }
 		  }
-		  if(Math.abs(nodes[i][11].getElevation() - nodes[i+1][11].getElevation()) <= 3) {
-			  nodes[i][11].addNeighbor(nodes[i+1][11]);
-			  nodes[i+1][11].addNeighbor(nodes[i][11]);
+		  if(nodes[i][11].isAvailable() && nodes[i+1][11].isAvailable()) {
+			  if(Math.abs(nodes[i][11].getElevation() - nodes[i+1][11].getElevation()) <= 3) {
+				  nodes[i][11].addNeighbor(nodes[i+1][11]);
+				  nodes[i+1][11].addNeighbor(nodes[i][11]);
+			  }
 		  }
-		  if(Math.abs(nodes[11][i].getElevation() - nodes[11][i].getElevation()) <= 3) {
-			  nodes[11][i].addNeighbor(nodes[11][i+1]);
-			  nodes[11][i+1].addNeighbor(nodes[11][i]);
+		  if(nodes[11][i].isAvailable() && nodes[11][i+1].isAvailable()) {
+			  if(Math.abs(nodes[11][i].getElevation() - nodes[11][i].getElevation()) <= 3) {
+				  nodes[11][i].addNeighbor(nodes[11][i+1]);
+				  nodes[11][i+1].addNeighbor(nodes[11][i]);
+			  }
 		  }
 	  }
   }
   //will be 1-8 for directions, and 0 for mine
   public int nextStep() {
-	  return -1;
-	  //TODO: finish BFS
-    /**Map<String, String> parents = new HashMap<String, String>();
+	 boolean[][] visitedNodes = new boolean[11][11];
+	Node[][] parents = new Node[11][11];
     List<Node> temp = new ArrayList<Node>();
-
+    visitedNodes[5][5] = true;
     Node start = nodes[5][5];
     temp.add(start);
-    parents.put(startNodeName, null);
+    parents[5][5] = null;
+    start.updateShortest(0);
 
     while (temp.size() > 0) {
       Node currentNode = temp.get(0);
@@ -69,30 +78,25 @@ public class Graph {
 
       for (int i = 0; i < neighbors.size(); i++) {
         Node neighbor = neighbors.get(i);
-        String nodeName = neighbor.getName();
+        int neighborX = neighbor.getX();
+        int neighborY = neighbor.getY();
 
         // a node can only be visited once if it has more than one parents
-        boolean visited = parents.containsKey(nodeName);
+        boolean visited = visitedNodes[neighborX][neighborY];
         if (visited) {
           continue;
         } else {
           temp.add(neighbor);
-
+          visitedNodes[neighborX][neighborY] = true;
           // parents map can be used to get the path
-          parents.put(nodeName, currentNode.getName());
-
-          // return the shortest path if end node is reached
-          if (nodeName.equals(endNodeName)) {
-            System.out.println(parents);
-            return getPath(parents, endNodeName);
-          }
+          parents[neighborX][neighborY] = currentNode;
         }
       }
 
       temp.remove(0);
     }
 
-    return null;*/
+    return -1;
   }
 }
 
@@ -125,7 +129,9 @@ class Node {
   public void updateAvailability(boolean availability) {
 	  this.available = availability;
   }
-
+  public boolean isAvailable() {
+	  return available;
+  }
   public int getX() {
     return this.x;
   }
