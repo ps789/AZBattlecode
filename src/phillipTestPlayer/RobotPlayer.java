@@ -8,14 +8,15 @@ public strictfp class RobotPlayer {
     static RobotController rc;
 
     static Direction[] directions = {
+        Direction.NORTHWEST,
         Direction.NORTH,
-        Direction.EAST,
-        Direction.SOUTH,
-        Direction.WEST,
-        Direction.SOUTHEAST,
-        Direction.SOUTHWEST,
         Direction.NORTHEAST,
-        Direction.NORTHWEST
+        Direction.WEST,
+        Direction.WEST,
+        Direction.EAST,
+        Direction.SOUTHWEST,
+        Direction.SOUTH,
+        Direction.SOUTHEAST,
     };
     static RobotType[] spawnedByMiner = {RobotType.REFINERY, RobotType.VAPORATOR, RobotType.DESIGN_SCHOOL,
             RobotType.FULFILLMENT_CENTER, RobotType.NET_GUN};
@@ -74,17 +75,54 @@ public strictfp class RobotPlayer {
             Clock.yield();
         }
     }
-
     static void runMiner() throws GameActionException {
+    	Graph newGraph = new Graph();
         while(true) {
             turnCount++;
             System.out.println(turnCount);
-            if(rc.getRoundNum() > 1) {
-                readInitialMessage();
+            //If full return to base
+            if(rc.getSoupCarrying() > 0 && rc.getLocation().isAdjacentTo(myHQ)) {
+            	rc.depositSoup(rc.getLocation().directionTo(myHQ), rc.getSoupCarrying());
             }
-            if(rc.isReady()) {
-                tryBuild(RobotType.VAPORATOR,Direction.NORTH);
+            if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
+            	tryMove(rc.getLocation().directionTo(myHQ));
+            }else {
+            	for(int i = -5; i<6; i++) {
+            		for(int j = -5; j < 6; j++) {
+            			if(rc.canSenseLocation(rc.getLocation().translate(i,  j))) {
+            				newGraph.updateNode(5+i, 5+j, rc.senseElevation(rc.getLocation().translate(i, j)), rc.senseSoup(rc.getLocation().translate(i,  j)));
+            			}
+            			else {
+            				newGraph.updateNode(5+i, 5+j, Integer.MAX_VALUE, 0);
+            			}
+            		}
+            	}
+            	RobotInfo[] robotList = rc.senseNearbyRobots();
+            	for(int i = 0; i< robotList.length; i++) {
+            		newGraph.changeAvailability(5+robotList[i].getLocation().x-rc.getLocation().x, 5+robotList[i].getLocation().y-rc.getLocation().y, false);
+            	}
+            	newGraph.updateNeighbors();
+            	newGraph.initiateBFS();
+            	int direction = newGraph.getNextStepGreedy();
+            	if(direction < 10) {
+            		rc.mineSoup(directions[direction]);
+            	}else if(direction <18) {
+            		tryMove(directions[direction-10]);
+            	}else if(direction == 18) {
+            		tryMove(randomDirection());
+            	}else {
+            		tryMove(mySide);
+            	}
+            	
             }
+            
+            //If it can't find anything it's just going to move mySide
+//            if(rc.getRoundNum() > 1) {
+//                readInitialMessage();
+//            }
+//            if(rc.isReady()) {
+//                tryBuild(RobotType.VAPORATOR,Direction.NORTH);
+//            }
             Clock.yield();
         }
     }

@@ -6,9 +6,10 @@ import java.util.Map;
 
 public class Graph {
   private Node[][] nodes;
-
+  private Node[][] parents;
   public Graph() {
 	  nodes = new Node[11][11];
+	  parents = new Node[11][11];
 	  for(int i = 0; i< 11; i++) {
 		  for(int j = 0; j < 11; j++)
 			  nodes[i][j] = new Node(i, j);
@@ -62,7 +63,7 @@ public class Graph {
   }
   public void initiateBFS() {
 	 boolean[][] visitedNodes = new boolean[11][11];
-	Node[][] parents = new Node[11][11];
+	parents = new Node[11][11];
     List<Node> temp = new ArrayList<Node>();
     visitedNodes[5][5] = true;
     Node start = nodes[5][5];
@@ -96,10 +97,32 @@ public class Graph {
     return;
   }
   public int getNextStepFlag() {
-	  return 1;
+	  //TODO: finish flag method
+	  return -1;
   }
   public int getNextStepGreedy() {
-	  return 1;
+	  int maxX = 0;
+	  int maxY = 0;
+	  for(int i = 0; i< 11; i++) {
+		  for(int j = 0; j<11; j++) {
+			  if(nodes[maxX][maxY].getOptimum() < nodes[i][j].getOptimum()) {
+				  maxX = i;
+				  maxY = j;
+			  }
+		  }
+	  }
+	  Node currentNode = nodes[maxX][maxY];
+	  if(maxX == 5 && maxY ==5) {
+		  return 18;
+	  }
+	  if(currentNode.getOptimum() == -1)
+		  return 19;
+	  if(parents[currentNode.getX()][currentNode.getY()].getX() == 5 && parents[currentNode.getX()][currentNode.getY()].getY() == 5)
+		  return (currentNode.getX()*3+currentNode.getY()-16);
+	  while(parents[currentNode.getX()][currentNode.getY()].getX() != 5 || parents[currentNode.getX()][currentNode.getY()].getY() != 5) {
+		  currentNode = parents[currentNode.getX()][currentNode.getY()];
+	  }
+	  return (currentNode.getX()*3+currentNode.getY()-6);
   }
 }
 
@@ -126,6 +149,14 @@ class Node {
   public void updateShortest(int newShort) {
 	  this.shortest = newShort;
   }
+  public double getOptimum() {
+	  if(this.shortest == Integer.MAX_VALUE || !this.available)
+		  return -1;
+	  if(this.shortest == 0) {
+		  return this.soup/2.0;
+	  }
+	  return this.soup*1.0/(this.shortest);
+  }
   public int getSoup() {
 	  return this.soup;
   }
@@ -145,8 +176,9 @@ class Node {
 	  return this.elevation;
   }
   public void setStats(int newSoup, int newElevation) {
-	  soup = newSoup;
-	  elevation = newElevation;
+	  this.soup = newSoup;
+	  this.elevation = newElevation;
+	  this.available = true;
   }
   public void addNeighbor(Node neighbor) {
     neighbors.add(neighbor);
