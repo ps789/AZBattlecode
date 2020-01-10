@@ -18,6 +18,17 @@ public strictfp class RobotPlayer {
         Direction.SOUTH,
         Direction.SOUTHEAST,
     };
+    static Direction[] directions2 = {
+            Direction.NORTHWEST,
+            Direction.NORTH,
+            Direction.NORTHEAST,
+            Direction.WEST,
+            //Direction.WEST,
+            Direction.EAST,
+            Direction.SOUTHWEST,
+            Direction.SOUTH,
+            Direction.SOUTHEAST,
+        };
     static RobotType[] spawnedByMiner = {RobotType.REFINERY, RobotType.VAPORATOR, RobotType.DESIGN_SCHOOL,
             RobotType.FULFILLMENT_CENTER, RobotType.NET_GUN};
 
@@ -67,26 +78,47 @@ public strictfp class RobotPlayer {
 
         rc.submitTransaction(new int[] {myHQ.x, myHQ.y, 11211999, 5963, directionInt}, 8);
         System.out.println(Clock.getBytecodeNum());
+
         while(true) {
             turnCount++;
             if(rc.isReady()) {
                 tryBuild(RobotType.MINER, mySide.opposite());
             }
             Clock.yield();
+            
         }
     }
     static void runMiner() throws GameActionException {
-    	Graph newGraph = new Graph();
+    	myHQ = rc.adjacentLocation(Direction.WEST);
+    	//Graph newGraph = new Graph();
         while(true) {
             turnCount++;
             System.out.println(turnCount);
             //If full return to base
             if(rc.getSoupCarrying() > 0 && rc.getLocation().isAdjacentTo(myHQ)) {
-            	rc.depositSoup(rc.getLocation().directionTo(myHQ), rc.getSoupCarrying());
+            	if(rc.isReady()) {
+            		rc.depositSoup(rc.getLocation().directionTo(myHQ), rc.getSoupCarrying());
+            	}
             }
             if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
             	tryMove(rc.getLocation().directionTo(myHQ));
             }else {
+	            boolean foundSoup = false;
+	            for(int i = 0; i< 8; i++){
+	            	try {
+		            	if (rc.senseSoup(rc.adjacentLocation(Direction.NORTHEAST))>100){
+		            		foundSoup = true;
+		            		tryMine(directions2[i]);
+		            	}
+	            	}catch(GameActionException ex) {
+		            	continue;
+	            	}
+	            }
+	            if(!foundSoup)
+	            	tryMove(randomDirection());
+            }
+            
+            	/**{
             	for(int i = -5; i<6; i++) {
             		for(int j = -5; j < 6; j++) {
             			if(rc.canSenseLocation(rc.getLocation().translate(i,  j))) {
@@ -105,7 +137,8 @@ public strictfp class RobotPlayer {
             	newGraph.initiateBFS();
             	int direction = newGraph.getNextStepGreedy();
             	if(direction < 10) {
-            		rc.mineSoup(directions[direction]);
+            		rc.tryMine(directions[direction]);
+            		
             	}else if(direction <18) {
             		tryMove(directions[direction-10]);
             	}else if(direction == 18) {
@@ -114,7 +147,7 @@ public strictfp class RobotPlayer {
             		tryMove(mySide);
             	}
             	
-            }
+            }*/
             
             //If it can't find anything it's just going to move mySide
 //            if(rc.getRoundNum() > 1) {

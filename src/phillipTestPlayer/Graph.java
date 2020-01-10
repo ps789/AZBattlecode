@@ -47,16 +47,16 @@ public class Graph {
 				  }
 			  }
 		  }
-		  if(nodes[i][11].isAvailable() && nodes[i+1][11].isAvailable()) {
-			  if(Math.abs(nodes[i][11].getElevation() - nodes[i+1][11].getElevation()) <= 3) {
-				  nodes[i][11].addNeighbor(nodes[i+1][11]);
-				  nodes[i+1][11].addNeighbor(nodes[i][11]);
+		  if(nodes[i][10].isAvailable() && nodes[i+1][10].isAvailable()) {
+			  if(Math.abs(nodes[i][10].getElevation() - nodes[i+1][10].getElevation()) <= 3) {
+				  nodes[i][10].addNeighbor(nodes[i+1][10]);
+				  nodes[i+1][10].addNeighbor(nodes[i][10]);
 			  }
 		  }
-		  if(nodes[11][i].isAvailable() && nodes[11][i+1].isAvailable()) {
-			  if(Math.abs(nodes[11][i].getElevation() - nodes[11][i].getElevation()) <= 3) {
-				  nodes[11][i].addNeighbor(nodes[11][i+1]);
-				  nodes[11][i+1].addNeighbor(nodes[11][i]);
+		  if(nodes[10][i].isAvailable() && nodes[10][i+1].isAvailable()) {
+			  if(Math.abs(nodes[10][i].getElevation() - nodes[10][i].getElevation()) <= 3) {
+				  nodes[10][i].addNeighbor(nodes[10][i+1]);
+				  nodes[10][i+1].addNeighbor(nodes[10][i]);
 			  }
 		  }
 	  }
@@ -179,6 +179,7 @@ class Node {
 	  this.soup = newSoup;
 	  this.elevation = newElevation;
 	  this.available = true;
+	  this.shortest = Integer.MAX_VALUE;
   }
   public void addNeighbor(Node neighbor) {
     neighbors.add(neighbor);
