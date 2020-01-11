@@ -131,55 +131,87 @@ public strictfp class RobotPlayer {
     		}
     	}
     }
+    static Direction bugMoveReturn(Direction bugDirection) throws GameActionException{
+    	if(rc.getLocation().isAdjacentTo(myHQ)) {
+    		if(rc.isReady()) {
+        		rc.depositSoup(rc.getLocation().directionTo(myHQ), rc.getSoupCarrying());
+        	}
+    		return null;
+    	}else {
+    		if(bugDirection == null) {
+    			if(rc.canMove(rc.getLocation().directionTo(myHQ))) {
+    				tryMove(rc.getLocation().directionTo(myHQ));
+    				return null;
+    			}else {
+    				Direction currDir = rc.getLocation().directionTo(myHQ);
+    				while(!rc.canMove(currDir)) {
+    					currDir = getLeft(currDir);
+    				}
+    				tryMove(currDir);
+    				return currDir;
+    			}
+    		}
+    		if(rc.canMove(getRight(bugDirection))) {
+    			tryMove(getRight(bugDirection));
+    			if(getRight(bugDirection).equals(rc.getLocation().directionTo(myHQ))) {
+    				return null;
+    			}
+    			return getRight(bugDirection);
+    		}else {
+    			tryMove(bugDirection);
+    			return bugDirection;
+    		}
+    	}
+    }
     static void runMiner() throws GameActionException {
     	myHQ = rc.adjacentLocation(Direction.WEST);
         MapLocation targetLocation = rc.getLocation();
         Direction setDirection = directions[(int)(Math.random()*8)];
         boolean foundSoup = false;
         Direction bugDirection = null;
+        Direction bugDirection2 = null;
         while(true) {
-            turnCount++;
-            //If full return to base
-            if(rc.getSoupCarrying() > 0 && rc.getLocation().isAdjacentTo(myHQ)) {
-            	if(rc.isReady()) {
-            		rc.depositSoup(rc.getLocation().directionTo(myHQ), rc.getSoupCarrying());
-            	}
-            }
-            if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
-            	tryMove(rc.getLocation().directionTo(myHQ));
-            }else {
-	            if(!foundSoup || (foundSoup && rc.canSenseLocation(targetLocation) && rc.senseSoup(targetLocation)<=0)) {
-	            	foundSoup = false;
-	            	for(int i = -5; i<6; i++) {
-	            		for(int j = -5; j < 6; j++) {
-	            			if(rc.canSenseLocation(rc.getLocation().translate(i,  j))) {
-		            			if(rc.senseSoup(rc.getLocation().translate(i,  j))>0){
-		            				System.out.println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA found!");
-		            				foundSoup = true;
-		            				targetLocation = rc.getLocation().translate(i, j);
-		            			}
-	            			}
-	            		}
-	            	}
+        	if(rc.isReady()) {
+	            turnCount++;
+	            //If full return to base
+	            if(rc.getSoupCarrying() > 0 && rc.getLocation().isAdjacentTo(myHQ)) {
+	            	bugDirection2 = bugMoveReturn(bugDirection2);
 	            }
-	            if(foundSoup) {
-	            	bugDirection = bugMoveMine(targetLocation, bugDirection);
+	            if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
+	            	bugDirection2 = bugMoveReturn(bugDirection2);
 	            }else {
-	            	if (turnCount%10==0) {
-	            		setDirection = directions[(int)(Math.random()*8)];
-	            	}
-	        		while(!tryMove(setDirection))
-	        			setDirection = directions[(int)(Math.random()*8)];
+		            if(!foundSoup || (foundSoup && rc.canSenseLocation(targetLocation) && rc.senseSoup(targetLocation)<=0)) {
+		            	foundSoup = false;
+		            	for(int i = -5; i<6; i++) {
+		            		for(int j = -5; j < 6; j++) {
+		            			if(rc.canSenseLocation(rc.getLocation().translate(i,  j))) {
+			            			if(rc.senseSoup(rc.getLocation().translate(i,  j))>0){
+			            				foundSoup = true;
+			            				targetLocation = rc.getLocation().translate(i, j);
+			            			}
+		            			}
+		            		}
+		            	}
+		            }
+		            if(foundSoup) {
+		            	bugDirection = bugMoveMine(targetLocation, bugDirection);
+		            }else {
+		            	if (turnCount%10==0) {
+		            		setDirection = directions[(int)(Math.random()*8)];
+		            	}
+		        		while(!tryMove(setDirection))
+		        			setDirection = directions[(int)(Math.random()*8)];
+		            }
 	            }
-            }
-            
-//            if(rc.getRoundNum() > 1) {
-//                readInitialMessage();
-//            }
-//            if(rc.isReady()) {
-//                tryBuild(RobotType.VAPORATOR,Direction.NORTH);
-//            }
-            Clock.yield();
+	            
+	//            if(rc.getRoundNum() > 1) {
+	//                readInitialMessage();
+	//            }
+	//            if(rc.isReady()) {
+	//                tryBuild(RobotType.VAPORATOR,Direction.NORTH);
+	//            }
+	            Clock.yield();
+        	}
         }
     }
 
