@@ -2,6 +2,8 @@ package phillipTestPlayer;
 import battlecode.common.*;
 import org.omg.CORBA.MARSHAL;
 
+import static org.junit.Assert.assertNotNull;
+
 import java.util.Map;
 
 public strictfp class RobotPlayer {
@@ -11,24 +13,12 @@ public strictfp class RobotPlayer {
         Direction.NORTHWEST,
         Direction.NORTH,
         Direction.NORTHEAST,
-        Direction.WEST,
-        Direction.WEST,
         Direction.EAST,
-        Direction.SOUTHWEST,
-        Direction.SOUTH,
         Direction.SOUTHEAST,
+        Direction.SOUTH,
+        Direction.SOUTHWEST,
+        Direction.WEST,
     };
-    static Direction[] directions2 = {
-            Direction.NORTHWEST,
-            Direction.NORTH,
-            Direction.NORTHEAST,
-            Direction.WEST,
-            //Direction.WEST,
-            Direction.EAST,
-            Direction.SOUTHWEST,
-            Direction.SOUTH,
-            Direction.SOUTHEAST,
-        };
     static RobotType[] spawnedByMiner = {RobotType.REFINERY, RobotType.VAPORATOR, RobotType.DESIGN_SCHOOL,
             RobotType.FULFILLMENT_CENTER, RobotType.NET_GUN};
 
@@ -64,7 +54,30 @@ public strictfp class RobotPlayer {
         }
 
     }
-
+    static Direction getLeft(Direction current) {
+    	switch(current) {
+    	case NORTH: return Direction.NORTHWEST;
+    	case NORTHWEST: return Direction.WEST;
+    	case WEST: return Direction.SOUTHWEST;
+    	case SOUTHWEST: return Direction.SOUTH;
+    	case SOUTH: return Direction.SOUTHEAST;
+    	case SOUTHEAST: return Direction.EAST;
+    	case EAST: return Direction.NORTHEAST;
+    	default: return Direction.NORTH;
+    	}
+    }
+    static Direction getRight(Direction current) {
+    	switch(current) {
+    	case NORTH: return Direction.NORTHEAST;
+    	case NORTHWEST: return Direction.NORTH;
+    	case WEST: return Direction.NORTHWEST;
+    	case SOUTHWEST: return Direction.WEST;
+    	case SOUTH: return Direction.SOUTHWEST;
+    	case SOUTHEAST: return Direction.SOUTH;
+    	case EAST: return Direction.SOUTHEAST;
+    	default: return Direction.EAST;
+    	}
+    }
     static void runHQ() throws GameActionException {
         myHQ = rc.getLocation();
         int directionInt;
@@ -88,12 +101,44 @@ public strictfp class RobotPlayer {
             
         }
     }
+    static Direction bugMoveMine(MapLocation targetLocation, Direction bugDirection) throws GameActionException{
+    	if(rc.getLocation().isAdjacentTo(targetLocation)) {
+    		tryMine(rc.getLocation().directionTo(targetLocation));
+    		return null;
+    	}else {
+    		if(bugDirection == null) {
+    			if(rc.canMove(rc.getLocation().directionTo(targetLocation))) {
+    				tryMove(rc.getLocation().directionTo(targetLocation));
+    				return null;
+    			}else {
+    				Direction currDir = rc.getLocation().directionTo(targetLocation);
+    				while(!rc.canMove(currDir)) {
+    					currDir = getLeft(currDir);
+    				}
+    				tryMove(currDir);
+    				return currDir;
+    			}
+    		}
+    		if(rc.canMove(getRight(bugDirection))) {
+    			tryMove(getRight(bugDirection));
+    			if(getRight(bugDirection).equals(rc.getLocation().directionTo(targetLocation))) {
+    				return null;
+    			}
+    			return getRight(bugDirection);
+    		}else {
+    			tryMove(bugDirection);
+    			return bugDirection;
+    		}
+    	}
+    }
     static void runMiner() throws GameActionException {
     	myHQ = rc.adjacentLocation(Direction.WEST);
-    	//Graph newGraph = new Graph();
+        MapLocation targetLocation = rc.getLocation();
+        Direction setDirection = directions[(int)(Math.random()*8)];
+        boolean foundSoup = false;
+        Direction bugDirection = null;
         while(true) {
             turnCount++;
-            System.out.println(turnCount);
             //If full return to base
             if(rc.getSoupCarrying() > 0 && rc.getLocation().isAdjacentTo(myHQ)) {
             	if(rc.isReady()) {
@@ -103,53 +148,31 @@ public strictfp class RobotPlayer {
             if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
             	tryMove(rc.getLocation().directionTo(myHQ));
             }else {
-	            boolean foundSoup = false;
-	            for(int i = 0; i< 8; i++){
-	            	try {
-		            	if (rc.senseSoup(rc.adjacentLocation(Direction.NORTHEAST))>100){
-		            		foundSoup = true;
-		            		tryMine(directions2[i]);
-		            	}
-	            	}catch(GameActionException ex) {
-		            	continue;
+	            if(!foundSoup || (foundSoup && rc.canSenseLocation(targetLocation) && rc.senseSoup(targetLocation)<=0)) {
+	            	foundSoup = false;
+	            	for(int i = -5; i<6; i++) {
+	            		for(int j = -5; j < 6; j++) {
+	            			if(rc.canSenseLocation(rc.getLocation().translate(i,  j))) {
+		            			if(rc.senseSoup(rc.getLocation().translate(i,  j))>0){
+		            				System.out.println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA found!");
+		            				foundSoup = true;
+		            				targetLocation = rc.getLocation().translate(i, j);
+		            			}
+	            			}
+	            		}
 	            	}
 	            }
-	            if(!foundSoup)
-	            	tryMove(randomDirection());
+	            if(foundSoup) {
+	            	bugDirection = bugMoveMine(targetLocation, bugDirection);
+	            }else {
+	            	if (turnCount%10==0) {
+	            		setDirection = directions[(int)(Math.random()*8)];
+	            	}
+	        		while(!tryMove(setDirection))
+	        			setDirection = directions[(int)(Math.random()*8)];
+	            }
             }
             
-            	/**{
-            	for(int i = -5; i<6; i++) {
-            		for(int j = -5; j < 6; j++) {
-            			if(rc.canSenseLocation(rc.getLocation().translate(i,  j))) {
-            				newGraph.updateNode(5+i, 5+j, rc.senseElevation(rc.getLocation().translate(i, j)), rc.senseSoup(rc.getLocation().translate(i,  j)));
-            			}
-            			else {
-            				newGraph.updateNode(5+i, 5+j, Integer.MAX_VALUE, 0);
-            			}
-            		}
-            	}
-            	RobotInfo[] robotList = rc.senseNearbyRobots();
-            	for(int i = 0; i< robotList.length; i++) {
-            		newGraph.changeAvailability(5+robotList[i].getLocation().x-rc.getLocation().x, 5+robotList[i].getLocation().y-rc.getLocation().y, false);
-            	}
-            	newGraph.updateNeighbors();
-            	newGraph.initiateBFS();
-            	int direction = newGraph.getNextStepGreedy();
-            	if(direction < 10) {
-            		rc.tryMine(directions[direction]);
-            		
-            	}else if(direction <18) {
-            		tryMove(directions[direction-10]);
-            	}else if(direction == 18) {
-            		tryMove(randomDirection());
-            	}else {
-            		tryMove(mySide);
-            	}
-            	
-            }*/
-            
-            //If it can't find anything it's just going to move mySide
 //            if(rc.getRoundNum() > 1) {
 //                readInitialMessage();
 //            }
