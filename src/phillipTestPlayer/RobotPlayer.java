@@ -218,12 +218,15 @@ public strictfp class RobotPlayer {
         	if(rc.isReady()) {
 	            turnCount++;
 	            //If full return to base
-//	            if(rc.getSoupCarrying() > 0 && rc.getLocation().isAdjacentTo(myHQ)) {
-//	            	bugDirection2 = bugMoveReturn(bugDirection2);
-//	            }
 	            if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
 	            	bugDirection2 = bugMoveReturn(bugDirection2);
 	            }else {
+	            	for(Direction dir : directions) {
+	            		if(rc.canSenseLocation(rc.adjacentLocation(dir)) && rc.senseSoup(rc.adjacentLocation(dir))>0) {
+	            			foundSoup = true;
+	            			targetLocation = rc.adjacentLocation(dir);
+	            		}
+	            	}
 		            if(!foundSoup || (foundSoup && rc.canSenseLocation(targetLocation) && rc.senseSoup(targetLocation)<=0)) {
 		            	foundSoup = false;
 		            	for(int i = -5; i<6; i++) {
