@@ -54,30 +54,6 @@ public strictfp class RobotPlayer {
         }
 
     }
-    static Direction getLeft(Direction current) {
-    	switch(current) {
-    	case NORTH: return Direction.NORTHWEST;
-    	case NORTHWEST: return Direction.WEST;
-    	case WEST: return Direction.SOUTHWEST;
-    	case SOUTHWEST: return Direction.SOUTH;
-    	case SOUTH: return Direction.SOUTHEAST;
-    	case SOUTHEAST: return Direction.EAST;
-    	case EAST: return Direction.NORTHEAST;
-    	default: return Direction.NORTH;
-    	}
-    }
-    static Direction getRight(Direction current) {
-    	switch(current) {
-    	case NORTH: return Direction.NORTHEAST;
-    	case NORTHWEST: return Direction.NORTH;
-    	case WEST: return Direction.NORTHWEST;
-    	case SOUTHWEST: return Direction.WEST;
-    	case SOUTH: return Direction.SOUTHWEST;
-    	case SOUTHEAST: return Direction.SOUTH;
-    	case EAST: return Direction.SOUTHEAST;
-    	default: return Direction.EAST;
-    	}
-    }
     static void runHQ() throws GameActionException {
         myHQ = rc.getLocation();
         int directionInt;
@@ -113,40 +89,40 @@ public strictfp class RobotPlayer {
     			}else {
     				Direction currDir = rc.getLocation().directionTo(targetLocation);
     				while(!rc.canMove(currDir) || (rc.canSenseLocation(rc.adjacentLocation(currDir)) && rc.senseFlooding(rc.adjacentLocation(currDir)))) {
-    					currDir = getLeft(currDir);
+    					currDir = currDir.rotateLeft();
     				}
     				tryMove(currDir);
     				return currDir;
     			}
     		}
-    		if(rc.canMove(getRight(getRight(bugDirection))) && rc.canSenseLocation(rc.adjacentLocation(getRight(getRight(bugDirection)))) && !rc.senseFlooding(rc.adjacentLocation(getRight(getRight(bugDirection))))){
+    		if(rc.canMove(bugDirection.rotateRight().rotateRight()) && rc.canSenseLocation(rc.adjacentLocation(bugDirection.rotateRight().rotateRight())) && !rc.senseFlooding(rc.adjacentLocation(bugDirection.rotateRight().rotateRight()))){
     			tryMove(rc.getLocation().directionTo(targetLocation));
     			return null;
     		}
-    		if(rc.getLocation().directionTo(targetLocation) == getLeft(bugDirection) && rc.canMove(getLeft(bugDirection))){
-    			tryMove(getLeft(bugDirection));
+    		if(rc.getLocation().directionTo(targetLocation) == bugDirection.rotateLeft() && rc.canMove(bugDirection.rotateLeft())){
+    			tryMove(bugDirection.rotateLeft());
     			return null;
     		}
     		if(rc.getLocation().directionTo(targetLocation) == bugDirection && rc.canMove(bugDirection)){
     			tryMove(bugDirection);
     			return null;
     		}
-    		if(rc.canMove(getRight(bugDirection)) && rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && !rc.senseFlooding(rc.adjacentLocation(bugDirection))) {
-    			bugDirection = getRight(bugDirection);
-    			if(rc.canMove(getRight(bugDirection)) && rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && !rc.senseFlooding(rc.adjacentLocation(bugDirection))) {
-        			tryMove(getRight(bugDirection));
-        			if(getRight(bugDirection).equals(rc.getLocation().directionTo(targetLocation))) {
+    		if(rc.canMove(bugDirection.rotateRight()) && rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && !rc.senseFlooding(rc.adjacentLocation(bugDirection))) {
+    			bugDirection = bugDirection.rotateRight();
+    			if(rc.canMove(bugDirection.rotateRight()) && rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && !rc.senseFlooding(rc.adjacentLocation(bugDirection))) {
+        			tryMove(bugDirection.rotateRight());
+        			if(bugDirection.rotateRight().equals(rc.getLocation().directionTo(targetLocation))) {
         				return null;
         			}
-        			return getRight(bugDirection);
+        			return bugDirection.rotateRight();
         		}
-    			if(getRight(bugDirection).equals(rc.getLocation().directionTo(targetLocation))) {
+    			if(bugDirection.rotateRight().equals(rc.getLocation().directionTo(targetLocation))) {
     				return null;
     			}
     			return bugDirection;
     		}else {
     			while(!rc.canMove(bugDirection) || (rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && rc.senseFlooding(rc.adjacentLocation(bugDirection)))) {
-					bugDirection = getLeft(bugDirection);
+					bugDirection = bugDirection.rotateLeft();
 				}
     			tryMove(bugDirection);
     			return bugDirection;
@@ -167,40 +143,40 @@ public strictfp class RobotPlayer {
     			}else {
     				Direction currDir = rc.getLocation().directionTo(myHQ);
     				while(!rc.canMove(currDir) || (rc.canSenseLocation(rc.adjacentLocation(currDir)) && rc.senseFlooding(rc.adjacentLocation(currDir)))) {
-    					currDir = getLeft(currDir);
+    					currDir = currDir.rotateLeft();
     				}
     				tryMove(currDir);
     				return currDir;
     			}
     		}
-    		if(rc.canMove(getRight(getRight(bugDirection))) && rc.canSenseLocation(rc.adjacentLocation(getRight(getRight(bugDirection)))) && !rc.senseFlooding(rc.adjacentLocation(getRight(getRight(bugDirection))))){
+    		if(rc.canMove(bugDirection.rotateRight().rotateRight()) && rc.canSenseLocation(rc.adjacentLocation(bugDirection.rotateRight().rotateRight())) && !rc.senseFlooding(rc.adjacentLocation(bugDirection.rotateRight().rotateRight()))){
     			tryMove(rc.getLocation().directionTo(myHQ));
     			return null;
     		}
-    		if(rc.getLocation().directionTo(myHQ) == getLeft(bugDirection) && rc.canMove(getLeft(bugDirection))){
-    			tryMove(getLeft(bugDirection));
+    		if(rc.getLocation().directionTo(myHQ) == bugDirection.rotateLeft() && rc.canMove(bugDirection.rotateLeft())){
+    			tryMove(bugDirection.rotateLeft());
     			return null;
     		}
     		if(rc.getLocation().directionTo(myHQ) == bugDirection && rc.canMove(bugDirection)){
     			tryMove(bugDirection);
     			return null;
     		}
-    		if(rc.canMove(getRight(bugDirection)) && rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && !rc.senseFlooding(rc.adjacentLocation(bugDirection))) {
-    			bugDirection = getRight(bugDirection);
-    			if(rc.canMove(getRight(bugDirection)) && rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && !rc.senseFlooding(rc.adjacentLocation(bugDirection))) {
-        			tryMove(getRight(bugDirection));
-        			if(getRight(bugDirection).equals(rc.getLocation().directionTo(myHQ))) {
+    		if(rc.canMove(bugDirection.rotateRight()) && rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && !rc.senseFlooding(rc.adjacentLocation(bugDirection))) {
+    			bugDirection = bugDirection.rotateRight();
+    			if(rc.canMove(bugDirection.rotateRight()) && rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && !rc.senseFlooding(rc.adjacentLocation(bugDirection))) {
+        			tryMove(bugDirection.rotateRight());
+        			if(bugDirection.rotateRight().equals(rc.getLocation().directionTo(myHQ))) {
         				return null;
         			}
-        			return getRight(bugDirection);
+        			return bugDirection.rotateRight();
         		}
-    			if(getRight(bugDirection).equals(rc.getLocation().directionTo(myHQ))) {
+    			if(bugDirection.rotateRight().equals(rc.getLocation().directionTo(myHQ))) {
     				return null;
     			}
     			return bugDirection;
     		}else {
     			while(!rc.canMove(bugDirection) || (rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && rc.senseFlooding(rc.adjacentLocation(bugDirection)))) {
-					bugDirection = getLeft(bugDirection);
+					bugDirection = bugDirection.rotateLeft();
 				}
     			tryMove(bugDirection);
     			return bugDirection;
