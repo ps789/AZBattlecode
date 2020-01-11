@@ -94,7 +94,7 @@ public strictfp class RobotPlayer {
         while(true) {
             turnCount++;
 
-            if(rc.isReady() && turnCount < 100) {
+            if(rc.isReady()) {
                 tryBuild(RobotType.MINER, mySide.opposite());
             }
             Clock.yield();
