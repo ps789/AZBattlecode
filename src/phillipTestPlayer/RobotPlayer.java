@@ -78,7 +78,7 @@ public strictfp class RobotPlayer {
         }
     }
     static Direction bugMoveMine(MapLocation targetLocation, Direction bugDirection) throws GameActionException{
-    	if(rc.getLocation().isAdjacentTo(targetLocation)) {
+    	if(rc.getLocation().isAdjacentTo(targetLocation) && !rc.adjacentLocation(mySide).equals(myHQ)) {
     		tryMine(rc.getLocation().directionTo(targetLocation));
     		return null;
     	}else {
@@ -184,7 +184,13 @@ public strictfp class RobotPlayer {
     	}
     }
     static void runMiner() throws GameActionException {
-    	myHQ = rc.adjacentLocation(Direction.WEST);
+    	MapLocation myLocation  = rc.getLocation();
+        if(myLocation.x < rc.getMapWidth()/2) {
+            mySide = Direction.WEST;
+        } else {
+            mySide = Direction.EAST;
+        }
+    	myHQ = rc.adjacentLocation(mySide);
         MapLocation targetLocation = rc.getLocation();
         Direction setDirection = directions[(int)(Math.random()*8)];
         boolean foundSoup = false;
@@ -198,7 +204,7 @@ public strictfp class RobotPlayer {
 	            	bugDirection2 = bugMoveReturn(bugDirection2);
 	            }else {
 	            	for(Direction dir : directions) {
-	            		if(rc.canSenseLocation(rc.adjacentLocation(dir)) && rc.senseSoup(rc.adjacentLocation(dir))>0) {
+	            		if(rc.canSenseLocation(rc.adjacentLocation(dir)) && rc.senseSoup(rc.adjacentLocation(dir))>0 && !rc.adjacentLocation(mySide).equals(myHQ)) {
 	            			foundSoup = true;
 	            			targetLocation = rc.adjacentLocation(dir);
 	            		}
