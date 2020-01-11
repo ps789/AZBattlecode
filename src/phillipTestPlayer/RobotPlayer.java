@@ -91,10 +91,10 @@ public strictfp class RobotPlayer {
 
         rc.submitTransaction(new int[] {myHQ.x, myHQ.y, 11211999, 5963, directionInt}, 8);
         System.out.println(Clock.getBytecodeNum());
-
         while(true) {
             turnCount++;
-            if(rc.isReady()) {
+
+            if(rc.isReady() && turnCount < 100) {
                 tryBuild(RobotType.MINER, mySide.opposite());
             }
             Clock.yield();
@@ -107,25 +107,47 @@ public strictfp class RobotPlayer {
     		return null;
     	}else {
     		if(bugDirection == null) {
-    			if(rc.canMove(rc.getLocation().directionTo(targetLocation))) {
+    			if(rc.canMove(rc.getLocation().directionTo(targetLocation)) && !rc.senseFlooding(rc.adjacentLocation(rc.getLocation().directionTo(targetLocation)))) {
     				tryMove(rc.getLocation().directionTo(targetLocation));
     				return null;
     			}else {
     				Direction currDir = rc.getLocation().directionTo(targetLocation);
-    				while(!rc.canMove(currDir)) {
+    				while(!rc.canMove(currDir) || (rc.canSenseLocation(rc.adjacentLocation(currDir)) && rc.senseFlooding(rc.adjacentLocation(currDir)))) {
     					currDir = getLeft(currDir);
     				}
     				tryMove(currDir);
     				return currDir;
     			}
     		}
-    		if(rc.canMove(getRight(bugDirection))) {
-    			tryMove(getRight(bugDirection));
+    		if(rc.canMove(getRight(getRight(bugDirection))) && rc.canSenseLocation(rc.adjacentLocation(getRight(getRight(bugDirection)))) && !rc.senseFlooding(rc.adjacentLocation(getRight(getRight(bugDirection))))){
+    			tryMove(rc.getLocation().directionTo(targetLocation));
+    			return null;
+    		}
+    		if(rc.getLocation().directionTo(targetLocation) == getLeft(bugDirection) && rc.canMove(getLeft(bugDirection))){
+    			tryMove(getLeft(bugDirection));
+    			return null;
+    		}
+    		if(rc.getLocation().directionTo(targetLocation) == bugDirection && rc.canMove(bugDirection)){
+    			tryMove(bugDirection);
+    			return null;
+    		}
+    		if(rc.canMove(getRight(bugDirection)) && rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && !rc.senseFlooding(rc.adjacentLocation(bugDirection))) {
+    			bugDirection = getRight(bugDirection);
+    			if(rc.canMove(getRight(bugDirection)) && rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && !rc.senseFlooding(rc.adjacentLocation(bugDirection))) {
+        			tryMove(getRight(bugDirection));
+        			if(getRight(bugDirection).equals(rc.getLocation().directionTo(targetLocation))) {
+        				return null;
+        			}
+        			return getRight(bugDirection);
+        		}
     			if(getRight(bugDirection).equals(rc.getLocation().directionTo(targetLocation))) {
     				return null;
     			}
-    			return getRight(bugDirection);
+    			return bugDirection;
     		}else {
+    			while(!rc.canMove(bugDirection) || (rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && rc.senseFlooding(rc.adjacentLocation(bugDirection)))) {
+					bugDirection = getLeft(bugDirection);
+				}
     			tryMove(bugDirection);
     			return bugDirection;
     		}
@@ -139,25 +161,47 @@ public strictfp class RobotPlayer {
     		return null;
     	}else {
     		if(bugDirection == null) {
-    			if(rc.canMove(rc.getLocation().directionTo(myHQ))) {
+    			if(rc.canMove(rc.getLocation().directionTo(myHQ)) && !rc.senseFlooding(rc.adjacentLocation(rc.getLocation().directionTo(myHQ)))) {
     				tryMove(rc.getLocation().directionTo(myHQ));
     				return null;
     			}else {
     				Direction currDir = rc.getLocation().directionTo(myHQ);
-    				while(!rc.canMove(currDir)) {
+    				while(!rc.canMove(currDir) || (rc.canSenseLocation(rc.adjacentLocation(currDir)) && rc.senseFlooding(rc.adjacentLocation(currDir)))) {
     					currDir = getLeft(currDir);
     				}
     				tryMove(currDir);
     				return currDir;
     			}
     		}
-    		if(rc.canMove(getRight(bugDirection))) {
-    			tryMove(getRight(bugDirection));
+    		if(rc.canMove(getRight(getRight(bugDirection))) && rc.canSenseLocation(rc.adjacentLocation(getRight(getRight(bugDirection)))) && !rc.senseFlooding(rc.adjacentLocation(getRight(getRight(bugDirection))))){
+    			tryMove(rc.getLocation().directionTo(myHQ));
+    			return null;
+    		}
+    		if(rc.getLocation().directionTo(myHQ) == getLeft(bugDirection) && rc.canMove(getLeft(bugDirection))){
+    			tryMove(getLeft(bugDirection));
+    			return null;
+    		}
+    		if(rc.getLocation().directionTo(myHQ) == bugDirection && rc.canMove(bugDirection)){
+    			tryMove(bugDirection);
+    			return null;
+    		}
+    		if(rc.canMove(getRight(bugDirection)) && rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && !rc.senseFlooding(rc.adjacentLocation(bugDirection))) {
+    			bugDirection = getRight(bugDirection);
+    			if(rc.canMove(getRight(bugDirection)) && rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && !rc.senseFlooding(rc.adjacentLocation(bugDirection))) {
+        			tryMove(getRight(bugDirection));
+        			if(getRight(bugDirection).equals(rc.getLocation().directionTo(myHQ))) {
+        				return null;
+        			}
+        			return getRight(bugDirection);
+        		}
     			if(getRight(bugDirection).equals(rc.getLocation().directionTo(myHQ))) {
     				return null;
     			}
-    			return getRight(bugDirection);
+    			return bugDirection;
     		}else {
+    			while(!rc.canMove(bugDirection) || (rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && rc.senseFlooding(rc.adjacentLocation(bugDirection)))) {
+					bugDirection = getLeft(bugDirection);
+				}
     			tryMove(bugDirection);
     			return bugDirection;
     		}
@@ -174,9 +218,9 @@ public strictfp class RobotPlayer {
         	if(rc.isReady()) {
 	            turnCount++;
 	            //If full return to base
-	            if(rc.getSoupCarrying() > 0 && rc.getLocation().isAdjacentTo(myHQ)) {
-	            	bugDirection2 = bugMoveReturn(bugDirection2);
-	            }
+//	            if(rc.getSoupCarrying() > 0 && rc.getLocation().isAdjacentTo(myHQ)) {
+//	            	bugDirection2 = bugMoveReturn(bugDirection2);
+//	            }
 	            if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
 	            	bugDirection2 = bugMoveReturn(bugDirection2);
 	            }else {
@@ -199,8 +243,9 @@ public strictfp class RobotPlayer {
 		            	if (turnCount%10==0) {
 		            		setDirection = directions[(int)(Math.random()*8)];
 		            	}
-		        		while(!tryMove(setDirection))
+		        		while((rc.canSenseLocation(rc.adjacentLocation(setDirection)) && rc.senseFlooding(rc.adjacentLocation(setDirection))) || !rc.canMove(setDirection))
 		        			setDirection = directions[(int)(Math.random()*8)];
+		        		tryMove(setDirection);
 		            }
 	            }
 	            
