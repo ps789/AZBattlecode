@@ -3,28 +3,51 @@ import battlecode.common.*;
 import org.omg.CORBA.MARSHAL;
 
 import java.awt.*;
+import java.security.DigestException;
+import java.util.ArrayList;
 import java.util.Map;
 
 public strictfp class RobotPlayer {
     static RobotController rc;
 
     static Direction[] directions = {
-        Direction.NORTH,
-        Direction.EAST,
-        Direction.SOUTH,
-        Direction.WEST,
-        Direction.SOUTHEAST,
-        Direction.SOUTHWEST,
-        Direction.NORTHEAST,
-        Direction.NORTHWEST
+            Direction.NORTHWEST,
+            Direction.NORTH,
+            Direction.NORTHEAST,
+            Direction.WEST,
+            Direction.WEST,
+            Direction.EAST,
+            Direction.SOUTHWEST,
+            Direction.SOUTH,
+            Direction.SOUTHEAST,
+    };
+    static Direction[] directions2 = {
+            Direction.NORTHWEST,
+            Direction.NORTH,
+            Direction.NORTHEAST,
+            Direction.WEST,
+            //Direction.WEST,
+            Direction.EAST,
+            Direction.SOUTHWEST,
+            Direction.SOUTH,
+            Direction.SOUTHEAST,
     };
     static RobotType[] spawnedByMiner = {RobotType.REFINERY, RobotType.VAPORATOR, RobotType.DESIGN_SCHOOL,
             RobotType.FULFILLMENT_CENTER, RobotType.NET_GUN};
 
     static int turnCount;
 
+    // the location of our hq
     static MapLocation myHQ;
+
+    // the side of the map (EAST/WEST) that we are playing from
     static Direction mySide = Direction.CENTER;
+
+    // the side of the hq a defensive landscaper is on
+    static Direction myPosition = Direction.CENTER;
+
+    // soup hotspot, if found
+    static MapLocation soupSpot;
 
     /**
      * run() is the method that is called when a robot is instantiated in the Battlecode world.
@@ -56,14 +79,24 @@ public strictfp class RobotPlayer {
 
     static void runHQ() throws GameActionException {
         myHQ = rc.getLocation();
-
         sendInitialMessage();
+
         System.out.println(Clock.getBytecodeNum());
         while(true) {
-            if(rc.isReady() && turnCount == 0) {
+            if(rc.isReady() && turnCount < 4) {
                 tryBuild(RobotType.MINER, mySide.opposite());
                 turnCount++;
             }
+
+            if(rc.isReady()) {
+                RobotInfo[] enemies = rc.senseNearbyRobots(-1, rc.getTeam().opponent());
+                for(RobotInfo ri : enemies) {
+                    if (ri.getLocation().distanceSquaredTo(myHQ) < 16)
+                        if (ri.getType() == RobotType.DELIVERY_DRONE)
+                            rc.shootUnit(ri.getID());
+                }
+            }
+
             Clock.yield();
         }
     }
@@ -81,11 +114,12 @@ public strictfp class RobotPlayer {
             System.out.println("WEST");
 
         while(true) {
+
             if(rc.isReady()) {
                 switch (turnCount) {
                     case 0:
                     case 1:
-                        tryMove(mySide.opposite());
+                        pathTowards(mySide.opposite());
                         turnCount++;
                         break;
                     case 2:
@@ -95,15 +129,58 @@ public strictfp class RobotPlayer {
                         }
                         break;
                     default:
-                        if(rc.canMove(Direction.NORTHEAST))
-                            rc.move(Direction.NORTHEAST);
-                            turnCount ++;
+                        minerMove();
                         break;
                 }
 
                 System.out.println(turnCount);
             }
             Clock.yield();
+        }
+    }
+
+    static void minerMove() throws GameActionException {
+        //Graph newGraph = new Graph();
+        while (true) {
+            //If full return to base
+
+            if(rc.isReady()) {
+                if(rc.getSoupCarrying() > 0 && rc.getLocation().isAdjacentTo(myHQ)) {
+                    rc.depositSoup(rc.getLocation().directionTo(myHQ), rc.getSoupCarrying());
+                    turnCount++;
+                } else if (rc.getSoupCarrying() >= RobotType.MINER.soupLimit) {
+                    pathTowards(myHQ);
+                } else {
+                    pathTowards(soupSpot);
+                }
+
+            } else {
+                Clock.yield();
+            }
+            if (rc.getSoupCarrying() > 0 && rc.getLocation().isAdjacentTo(myHQ)) {
+                if (rc.isReady()) {
+                    rc.depositSoup(rc.getLocation().directionTo(myHQ), rc.getSoupCarrying());
+                    turnCount++;
+                }
+            }
+
+            if (rc.getSoupCarrying() >= RobotType.MINER.soupLimit) {
+                pathTowards(myHQ);
+            } else {
+                boolean foundSoup = false;
+                for (int i = 0; i < 8; i++) {
+                    try {
+                        if (rc.senseSoup(rc.adjacentLocation(Direction.NORTHEAST)) > 100) {
+                            foundSoup = true;
+                            tryMine(directions2[i]);
+                        }
+                    } catch (GameActionException ex) {
+                        continue;
+                    }
+                }
+                if (!foundSoup)
+                    pathTowards(randomDirection());
+            }
         }
     }
 
@@ -121,22 +198,26 @@ public strictfp class RobotPlayer {
         while(mySide == Direction.CENTER) {
             readInitialMessage();
         }
-
         while(true) {
-            if(rc.getTeamSoup() > 100 && rc.isReady()) {
+            if(rc.getTeamSoup() > 150 && rc.isReady()) {
+
                 switch (turnCount) {
+                    case 0:
                     case 1:
                     case 2:
                     case 3:
-                    case 4:
                     case 5:
-                    case 6:
-                    case 7: tryBuild(RobotType.LANDSCAPER, mySide); break;
-                    default: tryBuild(RobotType.LANDSCAPER, mySide.opposite()); break;
+                    case 7:
+                    case 8:
+                    case 9: if(tryBuild(RobotType.LANDSCAPER, mySide))
+                        System.out.println("defensive landscaper created");
+                        turnCount++; break;
+                    default: if(tryBuild(RobotType.LANDSCAPER, mySide.opposite()))
+                        System.out.println("offensive landscaper created");
+                        turnCount++; break;
                 }
 
-                turnCount++;
-                System.out.println(turnCount);
+                System.out.println("Design school has made landscaper " + turnCount);
             }
             Clock.yield();
         }
@@ -148,7 +229,62 @@ public strictfp class RobotPlayer {
     }
 
     static void runLandscaper() throws GameActionException {
+        while(mySide == Direction.CENTER) {
+            if(rc.getRoundNum() > 1) {
+                readInitialMessage();
+            }
+        }
 
+        // defensive landscapers
+        if(findCreator() != mySide) {
+            System.out.println("I am on defense!");
+            while (rc.getLocation().distanceSquaredTo(myHQ) > 3) {
+                System.out.println("I want to go home.");
+                if (rc.isReady() && pathTowards(myHQ))
+                    turnCount++;
+            }
+
+            MapLocation destination = myHQ.add(mySide);
+            while (destination != rc.getLocation()) {
+                System.out.println("I am at " + rc.getLocation().x + "," + rc.getLocation().y);
+                System.out.println("I want to go to " + destination.x + "," + destination.y);
+                // check if location is occupied by a landscaper
+                RobotInfo rf = rc.senseRobotAtLocation(destination);
+                if (rf != null) {
+                    if (rf.type == RobotType.LANDSCAPER && rf.getTeam() == rc.getTeam() && rf.getID() != rc.getID())
+                        destination = myHQ.add(myHQ.directionTo(destination).rotateLeft());
+                }
+                if (rc.isReady() && pathTowards(destination))
+                    turnCount++;
+            }
+
+            myPosition = myHQ.directionTo(rc.getLocation());
+            while(true) {
+                if (rc.isReady()) {
+                    if (rc.getDirtCarrying() < RobotType.LANDSCAPER.dirtLimit) {
+                        System.out.println("Collecting Dirt");
+                        tryDig();
+                    }
+                    else
+                        rc.depositDirt(Direction.CENTER);
+                } else {
+                    Clock.yield();
+                }
+            }
+
+        // offensive landscapers
+        } else {
+            System.out.println("I am on offense!");
+            // find enemy base and sit next to it
+            while(true) {
+                if(rc.isReady()) {
+                    pathTowards(mySide.opposite());
+                    System.out.println("ATTACK!");
+                } else {
+                    Clock.yield();
+                }
+            }
+        }
     }
 
     static void runDeliveryDrone() throws GameActionException {
@@ -164,7 +300,7 @@ public strictfp class RobotPlayer {
             }
         } else {
             // No close robots, so search for robots within sight radius
-            tryMove(randomDirection());
+            pathTowards(randomDirection());
         }
     }
 
@@ -178,7 +314,7 @@ public strictfp class RobotPlayer {
      * @return a random Direction
      */
     static Direction randomDirection() {
-        return directions[(int) (Math.random() * directions.length)];
+        return directions2[(int) (Math.random() * directions2.length)];
     }
 
     /**
@@ -190,35 +326,67 @@ public strictfp class RobotPlayer {
         return spawnedByMiner[(int) (Math.random() * spawnedByMiner.length)];
     }
 
-    static boolean tryMove() throws GameActionException {
-        for (Direction dir : directions)
-            if (tryMove(dir))
-                return true;
-        return false;
-        // MapLocation loc = rc.getLocation();
-        // if (loc.x < 10 && loc.x < loc.y)
-        //     return tryMove(Direction.EAST);
-        // else if (loc.x < 10)
-        //     return tryMove(Direction.SOUTH);
-        // else if (loc.x > loc.y)
-        //     return tryMove(Direction.WEST);
-        // else
-        //     return tryMove(Direction.NORTH);
+    public strictfp MapLocation[] getAllLocationsWithinRadiusSquared(MapLocation center, int radiusSquared) {
+        ArrayList<MapLocation> returnLocations = new ArrayList();
+        int ceiledRadius = (int)Math.ceil(Math.sqrt((double)radiusSquared)) + 1;
+        int minX = Math.max(center.x - ceiledRadius, 0);
+        int minY = Math.max(center.y - ceiledRadius, 0);
+        int maxX = Math.min(center.x + ceiledRadius, rc.getMapWidth() - 1);
+        int maxY = Math.min(center.y + ceiledRadius, rc.getMapHeight() - 1);
+
+        for(int x = minX; x <= maxX; ++x) {
+            for(int y = minY; y <= maxY; ++y) {
+                MapLocation newLocation = new MapLocation(x, y);
+                if (center.isWithinDistanceSquared(newLocation, radiusSquared)) {
+                    returnLocations.add(newLocation);
+                }
+            }
+        }
+
+        return (MapLocation[])returnLocations.toArray(new MapLocation[0]);
     }
 
     /**
-     * Attempts to move in a given direction.
+     * Attempts to move in a given direction, and moves sideways if it can't.
      *
      * @param dir The intended direction of movement
      * @return true if a move was performed
      * @throws GameActionException
      */
-    static boolean tryMove(Direction dir) throws GameActionException {
+    static boolean pathTowards(Direction dir) throws GameActionException {
         // System.out.println("I am trying to move " + dir + "; " + rc.isReady() + " " + rc.getCooldownTurns() + " " + rc.canMove(dir));
-        if (rc.isReady() && rc.canMove(dir)) {
-            rc.move(dir);
-            return true;
-        } else return false;
+        Direction[] tryDirections = {
+                dir,
+                dir.rotateLeft(),
+                dir.rotateRight(),
+                dir.rotateLeft().rotateLeft(),
+                dir.rotateRight().rotateRight()
+        };
+
+        for(Direction tryDir: tryDirections) {
+            if (rc.canSenseLocation(rc.adjacentLocation(tryDir))) {
+                if (!rc.senseFlooding(rc.adjacentLocation(tryDir))) {
+                    if (rc.canMove(tryDir)) {
+                        rc.move(tryDir);
+                        System.out.println(rc.getType() + " moved!");
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Attempts to move towards a given location on the map.
+     *
+     * @param loc The intended target location of movement
+     * @return true if a move was performed
+     * @throws GameActionException
+     */
+    static boolean pathTowards(MapLocation loc) throws GameActionException {
+        return pathTowards(rc.getLocation().directionTo(loc));
     }
 
     /**
@@ -251,6 +419,44 @@ public strictfp class RobotPlayer {
     }
 
     /**
+     * Attempts to dig dirt in predefined ditch locations
+     * @throws GameActionException
+     */
+    static void tryDig() throws GameActionException {
+        switch (myPosition) {
+            case CENTER: break;
+            case NORTHWEST:
+            case NORTH:
+            case NORTHEAST:
+                if (rc.canDigDirt(rc.getLocation().directionTo(
+                        myHQ.add(Direction.NORTH).add(Direction.NORTH))))
+                    rc.digDirt(rc.getLocation().directionTo(
+                            myHQ.add(Direction.NORTH).add(Direction.NORTH)));
+                break;
+            case EAST:
+                if (rc.canDigDirt(rc.getLocation().directionTo(
+                        myHQ.add(Direction.EAST).add(Direction.EAST))))
+                    rc.digDirt(rc.getLocation().directionTo(
+                            myHQ.add(Direction.EAST).add(Direction.EAST)));
+                break;
+            case WEST:
+                if (rc.canDigDirt(rc.getLocation().directionTo(
+                        myHQ.add(Direction.WEST).add(Direction.WEST))))
+                    rc.digDirt(rc.getLocation().directionTo(
+                            myHQ.add(Direction.WEST).add(Direction.WEST)));
+                break;
+            case SOUTHWEST:
+            case SOUTH:
+            case SOUTHEAST:
+                if (rc.canDigDirt(rc.getLocation().directionTo(
+                        myHQ.add(Direction.SOUTH).add(Direction.SOUTH))))
+                    rc.digDirt(rc.getLocation().directionTo(
+                            myHQ.add(Direction.SOUTH).add(Direction.SOUTH)));
+                break;
+        }
+    }
+
+    /**
      * Attempts to refine soup in a given direction.
      *
      * @param dir The intended direction of refining
@@ -264,6 +470,10 @@ public strictfp class RobotPlayer {
         } else return false;
     }
 
+    /**
+     * for the HQ to send its coords at the start of the game
+     * @throws GameActionException
+     */
     static void sendInitialMessage() throws GameActionException {
         int directionInt;
         if(myHQ.x < rc.getMapWidth()/2) {
@@ -271,37 +481,44 @@ public strictfp class RobotPlayer {
             directionInt = 3;
         } else {
             mySide = Direction.EAST;
-            directionInt = 1;
+            directionInt = 4;
         }
 
-        rc.submitTransaction(new int[] {(698 + (2 * myHQ.x)), 15, (myHQ.y + 420), 5963, directionInt}, 4);
+        rc.submitTransaction(new int[] {(698 + myHQ.x), 15, (myHQ.y + 420), 510, directionInt, (soupSpot.x - 610), (soupSpot.y + 444)}, 2);
     }
 
+    /**
+     * for robots to read the HQ's location and side of play at creation
+     * @throws GameActionException
+     */
     static void readInitialMessage() throws GameActionException {
-        int round = 1;
+        int round = 6;
         Transaction[] roundBlock;
 
         while(round < rc.getRoundNum()) {
             roundBlock = rc.getBlock(round);
             for(Transaction t : roundBlock) {
-                if( t.getCost()             == 4 &&
-                    t.getMessage().length   == 5 &&
-                    t.getMessage()[3]       == 5963) {
+                if( t.getCost()             == 2 &&
+                    t.getMessage()[1]       == 15 &&
+                    t.getMessage()[3]       == 510) {
                     System.out.println("password found by: " + rc.getType());
                     for (int i = 0; i < t.getMessage().length; i++) {
-                        myHQ = new MapLocation((t.getMessage()[0] - 698) / 2, t.getMessage()[1] - 420);
-                        mySide = directions[t.getMessage()[4]];
+                        myHQ = new MapLocation(t.getMessage()[0] - 698, t.getMessage()[2] - 420);
+                        mySide = directions2[t.getMessage()[4]];
                     }
-                    round += rc.getRoundNum();
+                    System.out.println("HQ: " + myHQ.x + "," + myHQ.y + " / " + t.getMessage()[4]);
                 }
+
+                round += rc.getRoundNum();
             }
             round++;
         }
     }
 
     /**
-     * Gets the location of the unit's creator.
+     * Gets the Direction of the unit's creator.
      * Should only be called by units (landscapers, miners, drones)
+     * @return  Direction of the unit's creator
      */
     static Direction findCreator() throws GameActionException {
         RobotType creator;
@@ -309,21 +526,13 @@ public strictfp class RobotPlayer {
         switch (rc.getType()) {
             case LANDSCAPER:        creator = RobotType.DESIGN_SCHOOL;      break;
             case DELIVERY_DRONE:    creator = RobotType.FULFILLMENT_CENTER; break;
-            default:             creator = RobotType.HQ;                 break;
+            default:                creator = RobotType.HQ;                 break;
         }
 
         RobotInfo[] adjacentBots = rc.senseNearbyRobots(3,rc.getTeam());
         for(RobotInfo ri : adjacentBots) {
-
-        }
-
-        while (creatorDir == Direction.CENTER) {
-            for(Direction dir : directions) {
-                if (rc.canSenseLocation(rc.adjacentLocation(dir)))
-                    if (rc.senseRobotAtLocation(rc.adjacentLocation(dir)) != null)
-                        if (rc.senseRobotAtLocation(rc.adjacentLocation(dir)).getType() == creator)
-                            creatorDir = dir;
-            }
+            if (ri.getType() == creator)
+                creatorDir = rc.getLocation().directionTo(ri.getLocation());
         }
 
         return creatorDir;

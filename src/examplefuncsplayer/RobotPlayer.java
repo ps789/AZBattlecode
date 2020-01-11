@@ -65,6 +65,11 @@ public strictfp class RobotPlayer {
     static void runHQ() throws GameActionException {
         for (Direction dir : directions)
             tryBuild(RobotType.MINER, dir);
+        while(rc.getRoundNum() != 69){
+            System.out.println("cookie recipe");
+        }
+        // if (rc.getRoundNum() == 69)
+            // rc.resign();
     }
 
     static void runMiner() throws GameActionException {
