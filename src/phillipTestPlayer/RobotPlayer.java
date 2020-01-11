@@ -43,7 +43,7 @@ public strictfp class RobotPlayer {
         System.out.println("I'm a " + rc.getType() + "! Location " + rc.getLocation());
         switch (rc.getType()) {
             case HQ:                 runHQ();                break;
-            case MINER:              runMiner();             break;
+            case MINER:              runMinerAttack();             break;
             case REFINERY:           runRefinery();          break;
             case VAPORATOR:          runVaporator();         break;
             case DESIGN_SCHOOL:      runDesignSchool();      break;
@@ -56,6 +56,8 @@ public strictfp class RobotPlayer {
     }
     static void runHQ() throws GameActionException {
         myHQ = rc.getLocation();
+        System.out.println(myHQ.x);
+        System.out.println(rc.getMapWidth());
         int directionInt;
         if(myHQ.x < rc.getMapWidth()/2) {
             mySide = Direction.WEST;
@@ -180,6 +182,46 @@ public strictfp class RobotPlayer {
 				}
     			tryMove(bugDirection);
     			return bugDirection;
+    		}
+    	}
+    }
+    static void runMinerAttack() throws GameActionException{
+    	MapLocation myLocation  = rc.getLocation();
+    	Direction bugDirection = null;
+        if(myLocation.x < rc.getMapWidth()/2) {
+            mySide = Direction.WEST;
+        } else {
+            mySide = Direction.EAST;
+        }
+    	myHQ = rc.adjacentLocation(mySide);
+    	int currentChecking = 0;
+    	boolean foundHQ = false;
+    	MapLocation[] targetLocations = new MapLocation[]{(new MapLocation(rc.getMapWidth()-myHQ.x-1, myHQ.y)),
+    	                               (new MapLocation(rc.getMapWidth()-myHQ.x-1, rc.getMapHeight()-myHQ.y-1)),
+    	                               (new MapLocation(rc.getMapWidth(), rc.getMapHeight()-myHQ.y-1))};
+    	while(true) {
+    		if(rc.isReady()) {
+	            turnCount++;
+	    		if(turnCount%100 == 0 && !foundHQ) {
+	    			currentChecking++;
+	    		}
+	    		if(foundHQ && rc.getLocation().isAdjacentTo(targetLocations[currentChecking])) {
+	    			Clock.yield();
+	    		}else {
+		    		if(currentChecking == 3) {
+		    			while(true) {
+		    				Clock.yield();
+		    			}
+		    		}else {
+		    			if(rc.canSenseLocation(targetLocations[currentChecking]) && (rc.senseRobotAtLocation(targetLocations[currentChecking]) == null || !rc.senseRobotAtLocation(targetLocations[currentChecking]).getType().equals(RobotType.HQ))) {
+		    				currentChecking++;
+		    			}
+		    			if(rc.canSenseLocation(targetLocations[currentChecking]) && !(rc.senseRobotAtLocation(targetLocations[currentChecking]) == null) && rc.senseRobotAtLocation(targetLocations[currentChecking]).getType().equals(RobotType.HQ)) {
+		    				foundHQ = true;
+		    			}
+		    			bugDirection = bugMoveMine(targetLocations[currentChecking], bugDirection);
+		    		}
+	    		}
     		}
     	}
     }
