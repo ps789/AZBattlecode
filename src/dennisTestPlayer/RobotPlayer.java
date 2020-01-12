@@ -110,12 +110,14 @@ public strictfp class RobotPlayer {
                 readInitialMessage();
             }
         }
+
         MapLocation schoolLocation = myHQ.add(mySide.rotateRight().rotateRight().rotateRight())
                                          .add(mySide.rotateRight().rotateRight().rotateRight());
         MapLocation targetLocation = rc.getLocation();
         Direction setDirection = randomDirection();
         boolean foundSoup = false;
         boolean schoolBuilt = false;
+        boolean refineryBuilt = false;
         Direction bugDirection = null;
         Direction bugDirection2 = null;
 
@@ -163,7 +165,7 @@ public strictfp class RobotPlayer {
                         }
                         if(foundSoup) {
                             bugDirection = bugMoveMine(targetLocation, bugDirection);
-                        }else {
+                        } else {
                             if (turnCount%10==0) {
                                 Direction newDirection = randomDirection();
                                 while(newDirection == setDirection) {
@@ -178,7 +180,6 @@ public strictfp class RobotPlayer {
                     }
                 }
             }
-            System.out.println("hi miner#" + rc.getID() + "!");
             Clock.yield();
         }
     }
@@ -721,6 +722,7 @@ public strictfp class RobotPlayer {
     static void setPositionsAroundHQ(MapLocation mp) {
         int i = 0;
 
+        // hq
         addToPositions(mp, i++);
 
         // inner ring
@@ -733,23 +735,55 @@ public strictfp class RobotPlayer {
         addToPositions(mp.translate(0 ,1), i++);
         addToPositions(mp.translate(-1,1), i++);
 
-        // outer ring
+        // outer ring (separated into sides)
         addToPositions(mp.translate(-2,1), i++);
         addToPositions(mp.translate(-2,0), i++);
         addToPositions(mp.translate(-2,-1), i++);
         addToPositions(mp.translate(-2,-2), i++);
+
         addToPositions(mp.translate(-1,-2), i++);
         addToPositions(mp.translate(0 ,-2), i++);
         addToPositions(mp.translate(1 ,-2), i++);
         addToPositions(mp.translate(2 ,-2), i++);
+
         addToPositions(mp.translate(2 ,-1), i++);
         addToPositions(mp.translate(2 ,0), i++);
         addToPositions(mp.translate(2 ,1), i++);
         addToPositions(mp.translate(2 ,2), i++);
+
         addToPositions(mp.translate(1 ,2), i++);
         addToPositions(mp.translate(0 ,2), i++);
         addToPositions(mp.translate(-1,2), i++);
         addToPositions(mp.translate(-2,2), i++);
+
+        // 3rd ring (also separated by side)
+        addToPositions(mp.translate(-3,2), i++);
+        addToPositions(mp.translate(-3,1), i++);
+        addToPositions(mp.translate(-3,0), i++);
+        addToPositions(mp.translate(-3,-1), i++);
+        addToPositions(mp.translate(-3,-2), i++);
+        addToPositions(mp.translate(-3,-3), i++);
+
+        addToPositions(mp.translate(-2,-3), i++);
+        addToPositions(mp.translate(-1,-3), i++);
+        addToPositions(mp.translate(0,-3), i++);
+        addToPositions(mp.translate(1,-3), i++);
+        addToPositions(mp.translate(2,-3), i++);
+        addToPositions(mp.translate(3,-3), i++);
+
+        addToPositions(mp.translate(3,-2), i++);
+        addToPositions(mp.translate(3,-1), i++);
+        addToPositions(mp.translate(3,0), i++);
+        addToPositions(mp.translate(3,1), i++);
+        addToPositions(mp.translate(3,2), i++);
+        addToPositions(mp.translate(3,3), i++);
+
+        addToPositions(mp.translate(2,3), i++);
+        addToPositions(mp.translate(1,3), i++);
+        addToPositions(mp.translate(0,3), i++);
+        addToPositions(mp.translate(-1,3), i++);
+        addToPositions(mp.translate(-2,3), i++);
+        addToPositions(mp.translate(-3,3), i++);
     }
 
     static void addToPositions(MapLocation loc, int index) {

@@ -226,68 +226,82 @@ public strictfp class RobotPlayer {
     	}
     }
     static void runMiner() throws GameActionException {
-    	MapLocation myLocation  = rc.getLocation();
-        if(myLocation.x < rc.getMapWidth()/2) {
-            mySide = Direction.WEST;
-        } else {
-            mySide = Direction.EAST;
+        while(mySide == Direction.CENTER) {
+            if(rc.getRoundNum() > 1) {
+                readInitialMessage();
+            }
         }
-    	myHQ = rc.adjacentLocation(mySide);
+
+        MapLocation schoolLocation = myHQ.add(mySide.rotateRight().rotateRight().rotateRight())
+                .add(mySide.rotateRight().rotateRight().rotateRight());
         MapLocation targetLocation = rc.getLocation();
         Direction setDirection = randomDirection();
         boolean foundSoup = false;
+        boolean schoolBuilt = false;
+        boolean refineryBuilt = false;
         Direction bugDirection = null;
         Direction bugDirection2 = null;
+
+        // setPositionsAroundHQ(myHQ);
+
         while(true) {
-        	if(rc.isReady()) {
-	            turnCount++;
-	            //If full return to base
-	            if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
-	            	bugDirection2 = bugMoveReturn(bugDirection2);
-	            }else {
-	            	for(Direction dir : directions) {
-	            		if(rc.canSenseLocation(rc.adjacentLocation(dir)) && rc.senseSoup(rc.adjacentLocation(dir))>0 && !rc.adjacentLocation(mySide).equals(myHQ)) {
-	            			foundSoup = true;
-	            			targetLocation = rc.adjacentLocation(dir);
-	            		}
-	            	}
-		            if(!foundSoup || (foundSoup && rc.canSenseLocation(targetLocation) && rc.senseSoup(targetLocation)<=0)) {
-		            	foundSoup = false;
-		            	for(int i = -5; i<6; i++) {
-		            		for(int j = -5; j < 6; j++) {
-		            			if(rc.canSenseLocation(rc.getLocation().translate(i,  j))) {
-			            			if(rc.senseSoup(rc.getLocation().translate(i,  j))>0){
-			            				foundSoup = true;
-			            				targetLocation = rc.getLocation().translate(i, j);
-			            			}
-		            			}
-		            		}
-		            	}
-		            }
-		            if(foundSoup) {
-		            	bugDirection = bugMoveMine(targetLocation, bugDirection);
-		            }else {
-		            	if (turnCount%10==0) {
-		            		Direction newDirection = randomDirection();
-		            		while(newDirection == setDirection) {
-		            			newDirection = randomDirection();
-		            		}
-		            		setDirection = newDirection;
-		            	}
-		        		while((rc.canSenseLocation(rc.adjacentLocation(setDirection)) && rc.senseFlooding(rc.adjacentLocation(setDirection))) || !rc.canMove(setDirection))
-		        			setDirection = directions[(int)(Math.random()*8)];
-		        		tryMove(setDirection);
-		            }
-	            }
-	            
-	//            if(rc.getRoundNum() > 1) {
-	//                readInitialMessage();
-	//            }
-	//            if(rc.isReady()) {
-	//                tryBuild(RobotType.VAPORATOR,Direction.NORTH);
-	//            }
-	            Clock.yield();
-        	}
+
+            if(!foundSoup || (rc.canSenseLocation(targetLocation) && rc.senseSoup(targetLocation)<=0)) {
+                foundSoup = false;
+                for(int i = -5; i<6; i++) {
+                    for(int j = -5; j < 6; j++) {
+                        if(rc.canSenseLocation(rc.getLocation().translate(i,  j))) {
+                            if(rc.senseSoup(rc.getLocation().translate(i,  j))>0){
+                                foundSoup = true;
+                                targetLocation = rc.getLocation().translate(i, j);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if(rc.isReady()) {
+                turnCount++;
+
+                if(!schoolBuilt && rc.getLocation().isAdjacentTo(schoolLocation) &&
+                        rc.getTeamSoup() >= 150 && rc.getRoundNum() > 15) {
+                    RobotInfo ri = rc.senseRobotAtLocation(schoolLocation);
+                    if(ri == null) {
+                        if(tryBuild(RobotType.DESIGN_SCHOOL, rc.getLocation().directionTo(schoolLocation)))
+                            schoolBuilt = true;
+                    } else if (ri.getType() == RobotType.DESIGN_SCHOOL) {
+                        schoolBuilt = true;
+                    }
+
+                } else {
+                    // If full return to base
+                    if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
+                        bugDirection2 = bugMoveReturn(bugDirection2);
+                    }else {
+                        for(Direction dir : directions) {
+                            if(rc.canSenseLocation(rc.adjacentLocation(dir)) && rc.senseSoup(rc.adjacentLocation(dir))>0 && !rc.adjacentLocation(mySide).equals(myHQ)) {
+                                foundSoup = true;
+                                targetLocation = rc.adjacentLocation(dir);
+                            }
+                        }
+                        if(foundSoup) {
+                            bugDirection = bugMoveMine(targetLocation, bugDirection);
+                        } else {
+                            if (turnCount%10==0) {
+                                Direction newDirection = randomDirection();
+                                while(newDirection == setDirection) {
+                                    newDirection = randomDirection();
+                                }
+                                setDirection = newDirection;
+                            }
+                            while((rc.canSenseLocation(rc.adjacentLocation(setDirection)) && rc.senseFlooding(rc.adjacentLocation(setDirection))) || !rc.canMove(setDirection))
+                                setDirection = directions[(int)(Math.random()*8)];
+                            tryMove(setDirection);
+                        }
+                    }
+                }
+            }
+            Clock.yield();
         }
     }
 
