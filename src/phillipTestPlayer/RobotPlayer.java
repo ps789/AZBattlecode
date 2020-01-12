@@ -43,7 +43,7 @@ public strictfp class RobotPlayer {
         System.out.println("I'm a " + rc.getType() + "! Location " + rc.getLocation());
         switch (rc.getType()) {
             case HQ:                 runHQ();                break;
-            case MINER:              runMinerAttack();             break;
+            case MINER:              runMiner();             break;
             case REFINERY:           runRefinery();          break;
             case VAPORATOR:          runVaporator();         break;
             case DESIGN_SCHOOL:      runDesignSchool();      break;
@@ -234,7 +234,7 @@ public strictfp class RobotPlayer {
         }
     	myHQ = rc.adjacentLocation(mySide);
         MapLocation targetLocation = rc.getLocation();
-        Direction setDirection = directions[(int)(Math.random()*8)];
+        Direction setDirection = randomDirection();
         boolean foundSoup = false;
         Direction bugDirection = null;
         Direction bugDirection2 = null;
@@ -268,7 +268,11 @@ public strictfp class RobotPlayer {
 		            	bugDirection = bugMoveMine(targetLocation, bugDirection);
 		            }else {
 		            	if (turnCount%10==0) {
-		            		setDirection = directions[(int)(Math.random()*8)];
+		            		Direction newDirection = randomDirection();
+		            		while(newDirection == setDirection) {
+		            			newDirection = randomDirection();
+		            		}
+		            		setDirection = newDirection;
 		            	}
 		        		while((rc.canSenseLocation(rc.adjacentLocation(setDirection)) && rc.senseFlooding(rc.adjacentLocation(setDirection))) || !rc.canMove(setDirection))
 		        			setDirection = directions[(int)(Math.random()*8)];
