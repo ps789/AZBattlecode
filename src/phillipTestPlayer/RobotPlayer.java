@@ -56,29 +56,35 @@ public strictfp class RobotPlayer {
     }
     static void runHQ() throws GameActionException {
         myHQ = rc.getLocation();
-        System.out.println(myHQ.x);
-        System.out.println(rc.getMapWidth());
-        int directionInt;
-        if(myHQ.x < rc.getMapWidth()/2) {
-            mySide = Direction.WEST;
-            directionInt = 3;
-        } else {
-            mySide = Direction.EAST;
-            directionInt = 1;
-        }
+        // sendInitialMessage();
 
-        rc.submitTransaction(new int[] {myHQ.x, myHQ.y, 11211999, 5963, directionInt}, 8);
         System.out.println(Clock.getBytecodeNum());
         while(true) {
-            turnCount++;
+            if(turnCount < 4 && rc.isReady() && rc.getTeamSoup() >= 70) {
+                if (tryBuild(RobotType.MINER, mySide.opposite())) {
+                    turnCount++;
+                } else if (tryBuild(RobotType.MINER, mySide)) {
+                    turnCount++;
+                } else if (tryBuild(RobotType.MINER, Direction.SOUTH)) {
+                    turnCount++;
+                } else if (tryBuild(RobotType.MINER, Direction.NORTH)) {
+                    turnCount++;
+                }
+            }
 
             if(rc.isReady()) {
-                tryBuild(RobotType.MINER, mySide.opposite());
+                RobotInfo[] enemies = rc.senseNearbyRobots(-1, rc.getTeam().opponent());
+                for(RobotInfo ri : enemies) {
+                    if (ri.getLocation().distanceSquaredTo(myHQ) < 16)
+                        if (ri.getType() == RobotType.DELIVERY_DRONE)
+                            rc.shootUnit(ri.getID());
+                }
             }
+
             Clock.yield();
-            
         }
     }
+
     static Direction bugMoveMine(MapLocation targetLocation, Direction bugDirection) throws GameActionException{
     	if(rc.getLocation().isAdjacentTo(targetLocation) && !rc.adjacentLocation(mySide).equals(myHQ)) {
     		tryMine(rc.getLocation().directionTo(targetLocation));

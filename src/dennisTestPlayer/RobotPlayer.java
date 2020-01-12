@@ -83,13 +83,16 @@ public strictfp class RobotPlayer {
 
         System.out.println(Clock.getBytecodeNum());
         while(true) {
-            if(rc.isReady() && turnCount < 5) {
-                tryBuild(RobotType.MINER, mySide.opposite());
-                tryBuild(RobotType.MINER, mySide);
-                turnCount++;
-            }
-            if(rc.isReady() && rc.getRoundNum() < 15 && rc.getTeamSoup() >= 70) {
-                tryBuild(RobotType.MINER, Direction.SOUTH);
+            if(turnCount < 4 && rc.isReady() && rc.getTeamSoup() >= 70) {
+                if (tryBuild(RobotType.MINER, mySide.opposite())) {
+                    turnCount++;
+                } else if (tryBuild(RobotType.MINER, mySide)) {
+                    turnCount++;
+                } else if (tryBuild(RobotType.MINER, Direction.SOUTH)) {
+                    turnCount++;
+                } else if (tryBuild(RobotType.MINER, Direction.NORTH)) {
+                    turnCount++;
+                }
             }
 
             if(rc.isReady()) {
@@ -723,74 +726,69 @@ public strictfp class RobotPlayer {
         int i = 0;
 
         // hq
-        addToPositions(mp, i++);
+        positions[0] = mp;
 
         // inner ring
-        addToPositions(mp.translate(-1,0), i++);
-        addToPositions(mp.translate(-1,-1), i++);
-        addToPositions(mp.translate(0 ,-1), i++);
-        addToPositions(mp.translate(1 ,-1), i++);
-        addToPositions(mp.translate(1 ,0), i++);
-        addToPositions(mp.translate(1 ,1), i++);
-        addToPositions(mp.translate(0 ,1), i++);
-        addToPositions(mp.translate(-1,1), i++);
+        positions[1] = mp.translate(-1,0);
+        positions[2] = mp.translate(-1,-1);
+        positions[3] = mp.translate(0 ,-1);
+        positions[4] = mp.translate(1 ,-1);
+        positions[5] = mp.translate(1 ,0);
+        positions[6] = mp.translate(1 ,1);
+        positions[7] = mp.translate(0 ,1);
+        positions[8] = mp.translate(-1,1);
 
         // outer ring (separated into sides)
-        addToPositions(mp.translate(-2,1), i++);
-        addToPositions(mp.translate(-2,0), i++);
-        addToPositions(mp.translate(-2,-1), i++);
-        addToPositions(mp.translate(-2,-2), i++);
+        positions[9] = mp.translate(-2,1);
+        positions[10] = mp.translate(-2,0);
+        positions[11] = mp.translate(-2,-1);
+        positions[12] = mp.translate(-2,-2);
 
-        addToPositions(mp.translate(-1,-2), i++);
-        addToPositions(mp.translate(0 ,-2), i++);
-        addToPositions(mp.translate(1 ,-2), i++);
-        addToPositions(mp.translate(2 ,-2), i++);
+        positions[13] = mp.translate(-1,-2);
+        positions[14] = mp.translate(0 ,-2);
+        positions[15] = mp.translate(1 ,-2);
+        positions[16] = mp.translate(2 ,-2);
 
-        addToPositions(mp.translate(2 ,-1), i++);
-        addToPositions(mp.translate(2 ,0), i++);
-        addToPositions(mp.translate(2 ,1), i++);
-        addToPositions(mp.translate(2 ,2), i++);
+        positions[17] = mp.translate(2 ,-1);
+        positions[18] = mp.translate(2 ,0);
+        positions[19] = mp.translate(2 ,1);
+        positions[20] = mp.translate(2 ,2);
 
-        addToPositions(mp.translate(1 ,2), i++);
-        addToPositions(mp.translate(0 ,2), i++);
-        addToPositions(mp.translate(-1,2), i++);
-        addToPositions(mp.translate(-2,2), i++);
+        positions[21] = mp.translate(1 ,2);
+        positions[22] = mp.translate(0 ,2);
+        positions[23] = mp.translate(-1,2);
+        positions[24] = mp.translate(-2,2);
 
         // 3rd ring (also separated by side)
-        addToPositions(mp.translate(-3,2), i++);
-        addToPositions(mp.translate(-3,1), i++);
-        addToPositions(mp.translate(-3,0), i++);
-        addToPositions(mp.translate(-3,-1), i++);
-        addToPositions(mp.translate(-3,-2), i++);
-        addToPositions(mp.translate(-3,-3), i++);
+        positions[25] = mp.translate(-3,2);
+        positions[26] = mp.translate(-3,1);
+        positions[27] = mp.translate(-3,0);
+        positions[28] = mp.translate(-3,-1);
+        positions[29] = mp.translate(-3,-2);
+        positions[30] = mp.translate(-3,-3);
 
-        addToPositions(mp.translate(-2,-3), i++);
-        addToPositions(mp.translate(-1,-3), i++);
-        addToPositions(mp.translate(0,-3), i++);
-        addToPositions(mp.translate(1,-3), i++);
-        addToPositions(mp.translate(2,-3), i++);
-        addToPositions(mp.translate(3,-3), i++);
+        positions[31] = mp.translate(-2,-3);
+        positions[32] = mp.translate(-1,-3);
+        positions[33] = mp.translate(0,-3);
+        positions[34] = mp.translate(1,-3);
+        positions[35] = mp.translate(2,-3);
+        positions[36] = mp.translate(3,-3);
 
-        addToPositions(mp.translate(3,-2), i++);
-        addToPositions(mp.translate(3,-1), i++);
-        addToPositions(mp.translate(3,0), i++);
-        addToPositions(mp.translate(3,1), i++);
-        addToPositions(mp.translate(3,2), i++);
-        addToPositions(mp.translate(3,3), i++);
+        positions[37] = mp.translate(3,-2);
+        positions[38] = mp.translate(3,-1);
+        positions[39] = mp.translate(3,0);
+        positions[40] = mp.translate(3,1);
+        positions[41] = mp.translate(3,2);
+        positions[42] = mp.translate(3,3);
 
-        addToPositions(mp.translate(2,3), i++);
-        addToPositions(mp.translate(1,3), i++);
-        addToPositions(mp.translate(0,3), i++);
-        addToPositions(mp.translate(-1,3), i++);
-        addToPositions(mp.translate(-2,3), i++);
-        addToPositions(mp.translate(-3,3), i++);
+        positions[43] = mp.translate(2,3);
+        positions[44] = mp.translate(1,3);
+        positions[45] = mp.translate(0,3);
+        positions[46] = mp.translate(-1,3);
+        positions[47] = mp.translate(-2,3);
+        positions[48] = mp.translate(-3,3);
     }
 
-    static void addToPositions(MapLocation loc, int index) {
-        if(loc.x >= 0 && loc.x < rc.getMapWidth())
-            if(loc.y >= 0 && loc.y < rc.getMapHeight())
-                positions[index] = loc;
-    }
 
     /**
      * for the HQ to send its coords at the start of the game
