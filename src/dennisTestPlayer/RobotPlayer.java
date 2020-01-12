@@ -1,11 +1,5 @@
 package dennisTestPlayer;
 import battlecode.common.*;
-import org.omg.CORBA.MARSHAL;
-
-import java.awt.*;
-import java.security.DigestException;
-import java.util.ArrayList;
-import java.util.Map;
 
 public strictfp class RobotPlayer {
     static RobotController rc;
@@ -369,6 +363,14 @@ public strictfp class RobotPlayer {
                     case 6:
                     case 7:
                     case 8:
+                    case 9:
+                    case 10:
+                    case 11:
+                    case 12:
+                    case 13:
+                    case 14:
+                    case 15:
+                    case 16:
                         if(tryBuild(RobotType.LANDSCAPER, mySide)) {
                             System.out.println("defensive landscaper created");
                             turnCount++;
@@ -409,6 +411,27 @@ public strictfp class RobotPlayer {
                 turnCount++;
         }
 
+        /* this code doesn't work until tomorrow's update
+        int[] positionOrder = {1,2,3,4,5,6,7,8,23,21,29,17,15,13,11,9};
+        MapLocation destination = null;
+        int iter = 0;
+        while(destination == null) {
+            if(rc.onTheMap(positions[positionOrder[iter]])) {
+                destination = positions[positionOrder[iter]];
+            } else {
+                iter++;
+            }
+        }
+        // for checking if location is occupied
+        while (spotTaken(destination)) {
+            if(rc.onTheMap(positions[positionOrder[iter]])) {
+                destination = positions[positionOrder[iter]];
+            } else {
+                iter++;
+            }
+        }
+        */
+
         MapLocation destination = positions[1];
         while (!destination.equals(rc.getLocation())) {
             System.out.println("going to my room");
@@ -432,7 +455,7 @@ public strictfp class RobotPlayer {
                 System.out.println("defend.");
                 if (rc.getDirtCarrying() < RobotType.LANDSCAPER.dirtLimit) {
                     System.out.println("Collecting Dirt");
-                    tryDig();
+                    tryDefensiveDig();
                 }
                 else
                     rc.depositDirt(Direction.CENTER);
@@ -518,10 +541,18 @@ public strictfp class RobotPlayer {
                         }
                     default:
                         if (turnCount%10==0 || setDirection == null) {
-                            setDirection = directions[(int)(Math.random()*8)];
+                            Direction newDirection = randomDirection();
+                            if(setDirection == null) {
+                                setDirection = newDirection;
+                            }
+                            while(newDirection.equals(setDirection.opposite())) {
+                                newDirection = randomDirection();
+                            }
+                            setDirection = newDirection;
                         }
                         while((rc.canSenseLocation(rc.adjacentLocation(setDirection)) && rc.senseFlooding(rc.adjacentLocation(setDirection))) || !rc.canMove(setDirection))
-                            setDirection = directions[(int)(Math.random()*8)];
+                            setDirection = randomDirection();
+
                         tryMove(setDirection);
                 }
             }
@@ -529,11 +560,13 @@ public strictfp class RobotPlayer {
             Clock.yield();
         }
     }
-    static void tryDig() throws GameActionException {
+    static void tryDefensiveDig() throws GameActionException {
         switch (myPosition) {
             case 6:
             case 7:
             case 8:
+            case 23:
+            case 21:
                 if(rc.canDigDirt(rc.getLocation().directionTo(myHQ)))
                     rc.digDirt(rc.getLocation().directionTo(myHQ));
 
@@ -546,6 +579,8 @@ public strictfp class RobotPlayer {
                         + myHQ.add(Direction.NORTH).add(Direction.NORTH).y);
                 break;
             case 5:
+            case 17:
+            case 19:
                 if(rc.canDigDirt(rc.getLocation().directionTo(myHQ)))
                     rc.digDirt(rc.getLocation().directionTo(myHQ));
 
@@ -555,6 +590,8 @@ public strictfp class RobotPlayer {
                             myHQ.add(Direction.EAST).add(Direction.EAST)));
                 break;
             case 1:
+            case 9:
+            case 11:
                 if(rc.canDigDirt(rc.getLocation().directionTo(myHQ)))
                     rc.digDirt(rc.getLocation().directionTo(myHQ));
                 else if (rc.canDigDirt(rc.getLocation().directionTo(
@@ -565,6 +602,8 @@ public strictfp class RobotPlayer {
             case 2:
             case 3:
             case 4:
+            case 13:
+            case 14:
                 if(rc.canDigDirt(rc.getLocation().directionTo(myHQ)))
                     rc.digDirt(rc.getLocation().directionTo(myHQ));
 
@@ -577,6 +616,13 @@ public strictfp class RobotPlayer {
                         + myHQ.add(Direction.NORTH).add(Direction.NORTH).y);
                 break;
         }
+    }
+    static boolean spotTaken(MapLocation destination) throws GameActionException{
+        RobotInfo rf = rc.senseRobotAtLocation(destination);
+        return ( rf             !=  null                    &&
+                 rf.type        ==  RobotType.LANDSCAPER    &&
+                 rf.getTeam()   ==  rc.getTeam()            &&
+                 rf.getID()     !=  rc.getID()              );
     }
     static int getMyPosition(Direction dir) {
         switch (dir) {
@@ -624,8 +670,9 @@ public strictfp class RobotPlayer {
      * @return a random Direction
      */
     static Direction randomDirection() {
-        return directions2[(int) (Math.random() * directions2.length)];
+        return directions2[(int)(Math.random() * directions2.length)];
     }
+
 
     /**
      * Returns a random RobotType spawned by miners.

@@ -60,6 +60,14 @@ public strictfp class RobotPlayer {
 
         System.out.println(Clock.getBytecodeNum());
         while(true) {
+            // int directionInt;
+            if(myHQ.x < rc.getMapWidth()/2) {
+                mySide = Direction.WEST;
+                // directionInt = 3;
+            } else {
+                mySide = Direction.EAST;
+                // directionInt = 4;
+            }
             if(turnCount < 4 && rc.isReady() && rc.getTeamSoup() >= 70) {
                 if (tryBuild(RobotType.MINER, mySide.opposite())) {
                     turnCount++;
