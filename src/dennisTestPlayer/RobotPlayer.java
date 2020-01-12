@@ -83,9 +83,13 @@ public strictfp class RobotPlayer {
 
         System.out.println(Clock.getBytecodeNum());
         while(true) {
-            if(rc.isReady() && turnCount < 4) {
+            if(rc.isReady() && turnCount < 5) {
                 tryBuild(RobotType.MINER, mySide.opposite());
+                tryBuild(RobotType.MINER, mySide);
                 turnCount++;
+            }
+            if(rc.isReady() && rc.getRoundNum() < 15 && rc.getTeamSoup() >= 70) {
+                tryBuild(RobotType.MINER, Direction.SOUTH);
             }
 
             if(rc.isReady()) {
@@ -100,48 +104,86 @@ public strictfp class RobotPlayer {
             Clock.yield();
         }
     }
-
-    // miner functions
     static void runMiner() throws GameActionException {
         while(mySide == Direction.CENTER) {
             if(rc.getRoundNum() > 1) {
                 readInitialMessage();
             }
         }
+        MapLocation schoolLocation = myHQ.add(mySide.rotateRight().rotateRight().rotateRight())
+                                         .add(mySide.rotateRight().rotateRight().rotateRight());
+        MapLocation targetLocation = rc.getLocation();
+        Direction setDirection = randomDirection();
+        boolean foundSoup = false;
+        boolean schoolBuilt = false;
+        Direction bugDirection = null;
+        Direction bugDirection2 = null;
 
-        if(mySide == Direction.EAST)
-            System.out.println("EAST");
-        else
-            System.out.println("WEST");
+        setPositionsAroundHQ(myHQ);
 
         while(true) {
 
-            if(rc.isReady()) {
-                switch (turnCount) {
-                    case 0:
-                    case 1:
-                    case 2:
-                        pathTowards(Direction.SOUTHWEST);
-                        turnCount++;
-                        break;
-                    case 3:
-                        if(rc.getTeamSoup() > 150) {
-                            tryBuild(RobotType.DESIGN_SCHOOL, mySide.opposite());
-                            turnCount++;
+            if(!foundSoup || (rc.canSenseLocation(targetLocation) && rc.senseSoup(targetLocation)<=0)) {
+                foundSoup = false;
+                for(int i = -5; i<6; i++) {
+                    for(int j = -5; j < 6; j++) {
+                        if(rc.canSenseLocation(rc.getLocation().translate(i,  j))) {
+                            if(rc.senseSoup(rc.getLocation().translate(i,  j))>0){
+                                foundSoup = true;
+                                targetLocation = rc.getLocation().translate(i, j);
+                            }
                         }
-                        break;
-                    default:
-                        moveMiner();
-                        break;
+                    }
                 }
-
-                System.out.println(turnCount);
             }
+
+            if(rc.isReady()) {
+                turnCount++;
+
+                if(!schoolBuilt && rc.getLocation().isAdjacentTo(schoolLocation) &&
+                        rc.getTeamSoup() >= 150 && rc.getRoundNum() > 15) {
+                    RobotInfo ri = rc.senseRobotAtLocation(schoolLocation);
+                    if(ri == null) {
+                        if(tryBuild(RobotType.DESIGN_SCHOOL, rc.getLocation().directionTo(schoolLocation)))
+                            schoolBuilt = true;
+                    } else if (ri.getType() == RobotType.DESIGN_SCHOOL) {
+                        schoolBuilt = true;
+                    }
+
+                } else {
+                    // If full return to base
+                    if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
+                        bugDirection2 = bugMoveReturn(bugDirection2);
+                    }else {
+                        for(Direction dir : directions) {
+                            if(rc.canSenseLocation(rc.adjacentLocation(dir)) && rc.senseSoup(rc.adjacentLocation(dir))>0 && !rc.adjacentLocation(mySide).equals(myHQ)) {
+                                foundSoup = true;
+                                targetLocation = rc.adjacentLocation(dir);
+                            }
+                        }
+                        if(foundSoup) {
+                            bugDirection = bugMoveMine(targetLocation, bugDirection);
+                        }else {
+                            if (turnCount%10==0) {
+                                Direction newDirection = randomDirection();
+                                while(newDirection == setDirection) {
+                                    newDirection = randomDirection();
+                                }
+                                setDirection = newDirection;
+                            }
+                            while((rc.canSenseLocation(rc.adjacentLocation(setDirection)) && rc.senseFlooding(rc.adjacentLocation(setDirection))) || !rc.canMove(setDirection))
+                                setDirection = directions[(int)(Math.random()*8)];
+                            tryMove(setDirection);
+                        }
+                    }
+                }
+            }
+            System.out.println("hi miner#" + rc.getID() + "!");
             Clock.yield();
         }
     }
     static Direction bugMoveMine(MapLocation targetLocation, Direction bugDirection) throws GameActionException{
-        if(rc.getLocation().isAdjacentTo(targetLocation)) {
+        if(rc.getLocation().isAdjacentTo(targetLocation) && !rc.adjacentLocation(mySide).equals(myHQ)) {
             tryMine(rc.getLocation().directionTo(targetLocation));
             return null;
         }else {
@@ -246,55 +288,47 @@ public strictfp class RobotPlayer {
             }
         }
     }
-    static void moveMiner() throws GameActionException {
-        // myHQ = rc.adjacentLocation(Direction.WEST);
-        MapLocation targetLocation = rc.getLocation();
-        Direction setDirection = directions[(int)(Math.random()*8)];
-        boolean foundSoup = false;
+    static void runMinerAttack() throws GameActionException{
+        MapLocation myLocation  = rc.getLocation();
         Direction bugDirection = null;
-        Direction bugDirection2 = null;
+        if(myLocation.x < rc.getMapWidth()/2) {
+            mySide = Direction.WEST;
+        } else {
+            mySide = Direction.EAST;
+        }
+        myHQ = rc.adjacentLocation(mySide);
+        int currentChecking = 0;
+        boolean foundHQ = false;
+        MapLocation[] targetLocations = new MapLocation[]{(new MapLocation(rc.getMapWidth()-myHQ.x-1, myHQ.y)),
+                (new MapLocation(rc.getMapWidth()-myHQ.x-1, rc.getMapHeight()-myHQ.y-1)),
+                (new MapLocation(rc.getMapWidth(), rc.getMapHeight()-myHQ.y-1))};
         while(true) {
             if(rc.isReady()) {
                 turnCount++;
-                //If full return to base
-                if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
-                    bugDirection2 = bugMoveReturn(bugDirection2);
+                if(turnCount%100 == 0 && !foundHQ) {
+                    currentChecking++;
+                }
+                if(foundHQ && rc.getLocation().isAdjacentTo(targetLocations[currentChecking])) {
+                    Clock.yield();
                 }else {
-                    for(Direction dir : directions) {
-                        if(rc.canSenseLocation(rc.adjacentLocation(dir)) && rc.senseSoup(rc.adjacentLocation(dir))>0) {
-                            foundSoup = true;
-                            targetLocation = rc.adjacentLocation(dir);
+                    if(currentChecking == 3) {
+                        while(true) {
+                            Clock.yield();
                         }
-                    }
-                    if(!foundSoup || (foundSoup && rc.canSenseLocation(targetLocation) && rc.senseSoup(targetLocation)<=0)) {
-                        foundSoup = false;
-                        for(int i = -5; i<6; i++) {
-                            for(int j = -5; j < 6; j++) {
-                                if(rc.canSenseLocation(rc.getLocation().translate(i,  j))) {
-                                    if(rc.senseSoup(rc.getLocation().translate(i,  j))>0){
-                                        foundSoup = true;
-                                        targetLocation = rc.getLocation().translate(i, j);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if(foundSoup) {
-                        bugDirection = bugMoveMine(targetLocation, bugDirection);
                     }else {
-                        if (turnCount%12==0) {
-                            setDirection = directions[(int)(Math.random()*8)];
+                        if(rc.canSenseLocation(targetLocations[currentChecking]) && (rc.senseRobotAtLocation(targetLocations[currentChecking]) == null || !rc.senseRobotAtLocation(targetLocations[currentChecking]).getType().equals(RobotType.HQ))) {
+                            currentChecking++;
                         }
-                        while((rc.canSenseLocation(rc.adjacentLocation(setDirection)) && rc.senseFlooding(rc.adjacentLocation(setDirection))) || !rc.canMove(setDirection))
-                            setDirection = directions[(int)(Math.random()*8)];
-                        tryMove(setDirection);
+                        if(rc.canSenseLocation(targetLocations[currentChecking]) && !(rc.senseRobotAtLocation(targetLocations[currentChecking]) == null) && rc.senseRobotAtLocation(targetLocations[currentChecking]).getType().equals(RobotType.HQ)) {
+                            foundHQ = true;
+                        }
+                        bugDirection = bugMoveMine(targetLocations[currentChecking], bugDirection);
                     }
                 }
-
-                Clock.yield();
             }
         }
     }
+
     static boolean tryMove(Direction dir) throws GameActionException {
         // System.out.println("I am trying to move " + dir + "; " + rc.isReady() + " " + rc.getCooldownTurns() + " " + rc.canMove(dir));
         if (rc.isReady() && rc.canMove(dir)) {
@@ -331,12 +365,15 @@ public strictfp class RobotPlayer {
                     case 6:
                     case 7:
                     case 8:
-                        if(tryBuild(RobotType.LANDSCAPER, mySide))
-                        System.out.println("defensive landscaper created");
-                        turnCount++; break;
-                    default: if(tryBuild(RobotType.LANDSCAPER, mySide.opposite()))
-                        System.out.println("offensive landscaper created");
-                        turnCount++; break;
+                        if(tryBuild(RobotType.LANDSCAPER, mySide)) {
+                            System.out.println("defensive landscaper created");
+                            turnCount++;
+                        } break;
+                    default:
+                        if(tryBuild(RobotType.LANDSCAPER, mySide.opposite())) {
+                            System.out.println("offensive landscaper created");
+                            turnCount++;
+                    } break;
                 }
 
                 System.out.println("Design school has made landscaper " + turnCount);
@@ -351,6 +388,8 @@ public strictfp class RobotPlayer {
                 readInitialMessage();
             }
         }
+
+        setPositionsAroundHQ(myHQ);
 
         if (findCreator() == mySide) {
             runLandscaperOffense();
