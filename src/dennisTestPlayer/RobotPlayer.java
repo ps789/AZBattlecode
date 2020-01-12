@@ -44,7 +44,7 @@ public strictfp class RobotPlayer {
     static Direction mySide = Direction.CENTER;
 
     // array of positions around the hq
-    static MapLocation[] positions = new MapLocation[25];
+    static MapLocation[] positions = new MapLocation[49];
     static int myPosition;
     // soup hotspot, if found
     static MapLocation soupSpot;
