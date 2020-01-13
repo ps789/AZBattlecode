@@ -463,14 +463,49 @@ public strictfp class RobotPlayer {
         MapLocation destination = positions[1];
         while (!destination.equals(rc.getLocation())) {
             System.out.println("going to my room");
+
             // check if location is occupied by a landscaper
             RobotInfo rf = rc.senseRobotAtLocation(destination);
             if (rf != null) {
                 if (rf.type == RobotType.LANDSCAPER && rf.getTeam() == rc.getTeam() && rf.getID() != rc.getID())
                     destination = myHQ.add(myHQ.directionTo(destination).rotateLeft());
             }
-            if (rc.isReady() && pathTowards(destination))
-                turnCount++;
+
+            // try to get to destination
+            if (rc.isReady()) {
+                if(rc.getLocation().isAdjacentTo(destination)) {
+                    if(rf != null && rf.getTeam() != rc.getTeam()) {
+                        if (rc.canDepositDirt(rc.getLocation().directionTo(destination))) {
+                            rc.depositDirt(rc.getLocation().directionTo(destination));
+                            turnCount++;
+                        } else {
+                            if(rc.canDigDirt(rc.getLocation().directionTo(myHQ).opposite())) {
+                                rc.digDirt(rc.getLocation().directionTo(myHQ).opposite());
+                                turnCount++;
+                            }
+                        }
+                    } else if (rc.senseElevation(rc.getLocation()) > rc.senseElevation(destination)+3) {
+                        if (rc.canDepositDirt(rc.getLocation().directionTo(destination))) {
+                            rc.depositDirt(rc.getLocation().directionTo(destination));
+                            turnCount++;
+                        } else {
+                            if(rc.canDigDirt(Direction.CENTER)) {
+                                rc.digDirt(Direction.CENTER);
+                                turnCount++;
+                            }
+                        }
+                    } else if (rc.senseElevation(rc.getLocation()) < rc.senseElevation(destination)-3) {
+                        if(rc.canDigDirt(rc.getLocation().directionTo(destination))) {
+                            rc.digDirt(rc.getLocation().directionTo(destination));
+                            turnCount++;
+                        }
+                    } else if (pathTowards(destination)) {
+                        turnCount++;
+                    }
+                } else if (pathTowards(destination)) {
+                    turnCount++;
+                }
+            }
 
             System.out.println("I am here: " + rc.getLocation().x + "," + rc.getLocation().y);
             System.out.println("My Room is here: " + destination.x + "," + destination.y);
@@ -556,10 +591,14 @@ public strictfp class RobotPlayer {
                     case "hq":
                         if (rc.getLocation().isAdjacentTo(enemyHQ)) {
                             while (rc.getLocation().isAdjacentTo(enemyHQ)) {
-                                if(rc.canDepositDirt(rc.getLocation().directionTo(enemyHQ))) {
-                                    rc.depositDirt(rc.getLocation().directionTo(enemyHQ));
+                                if(rc.isReady()) {
+                                    if (rc.canDepositDirt(rc.getLocation().directionTo(enemyHQ))) {
+                                        rc.depositDirt(rc.getLocation().directionTo(enemyHQ));
+                                    } else {
+                                        rc.digDirt(Direction.CENTER);
+                                    }
                                 } else {
-                                    rc.digDirt(Direction.CENTER);
+                                    Clock.yield();
                                 }
                             }
                         } else {
