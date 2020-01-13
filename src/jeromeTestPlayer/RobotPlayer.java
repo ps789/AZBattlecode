@@ -2,6 +2,11 @@ package jeromeTestPlayer;
 
 import battlecode.common.*;
 
+//TODO: new struct - no inf loop on run()
+// for every runType():
+//      initType()
+//      while (true) updateType();
+
 public strictfp class RobotPlayer {
     static RobotController rc;
 
@@ -46,46 +51,39 @@ public strictfp class RobotPlayer {
         turnCount = 0;
 
         System.out.println("I'm a " + rc.getType() + " and I just got created!");
-        while (true) {
-            turnCount += 1;
-            // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
-            try {
+
+        System.out.println("I'm a " + rc.getType() + "! Location " + rc.getLocation());
+
+
+        try {
                 // Here, we've separated the controls into a different method for each RobotType.
                 // You can add the missing ones or rewrite this into your own control structure.
-                System.out.println("I'm a " + rc.getType() + "! Location " + rc.getLocation());
-                switch (rc.getType()) {
+                 switch (rc.getType()) {
                     case HQ:
-                        if (turnCount == 1)
-                                initHQ();
                         runHQ();
-                        break;
-
-
+                       
                     case MINER:              runMiner();             break;
                     case REFINERY:           runRefinery();          break;
                     case VAPORATOR:          runVaporator();         break;
                     case DESIGN_SCHOOL:      runDesignSchool();      break;
                     case FULFILLMENT_CENTER: runFulfillmentCenter(); break;
                     case LANDSCAPER:         runLandscaper();        break;
-                    case DELIVERY_DRONE:
-                        if (turnCount == 1)
-                            initDeliveryDrone();
-                            runDeliveryDrone();
-                            break;
-
-
+                    case DELIVERY_DRONE:    runDeliveryDrone(); break;
                     case NET_GUN:            runNetGun();            break;
                 }
 
                 System.out.println(Clock.getBytecodeNum());
-                // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
-                Clock.yield();
 
-            } catch (Exception e) {
+            }
+                
+                // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
+                
+        catch (Exception e) {
                 System.out.println(rc.getType() + " Exception");
                 e.printStackTrace();
             }
-        }
+
+        System.out.println("ERROR: It was a good run. *BOOM* ");
     }
 
     static void initHQ() throws GameActionException {
@@ -104,7 +102,19 @@ public strictfp class RobotPlayer {
     }
 
 
+
     static void runHQ() throws GameActionException {
+        initHQ();
+        System.out.println(Clock.getBytecodeNum());
+
+        while (true) {
+            turnCount++;
+            updateHQ();
+        }
+        
+    }
+
+    static void updateHQ() throws GameActionException {
         for (Direction dir : directions)
             tryBuild(RobotType.MINER, dir);
     }
@@ -149,33 +159,75 @@ public strictfp class RobotPlayer {
 
     static void runFulfillmentCenter() throws GameActionException {
 
+        // Which corner F is on (usu. SW or NE)
+        Direction cornerLoc = initFulfillmentCenter();
+
+        while (true) {
+            turnCount++;
+
+            updateFulfillmentCenter(cornerLoc);
+            Clock.getBytecodeNum();
+            Clock.yield();
+        }
+
+        
+
+    }
+
+    static Direction initFulfillmentCenter() throws GameActionException{
+        readInitialMessage();
+
+        MapLocation pos = rc.getLocation();
+
+        // if myHQ is right of F, then F is probably on SW corner - build SW
+        if (myHQ.x - pos.x > 0)
+            return Direction.SOUTHWEST;
+
+        // if myHQ is left of F, then F is probably on NE corner - build NE
+        return Direction.NORTHEAST;
+    }
+
+     static void updateFulfillmentCenter(Direction cornerLoc) throws GameActionException {
         int droneLimit = 12;
         boolean maxDrones = dronesBuilt < droneLimit;
         boolean enoughSoup = rc.getTeamSoup() >= RobotType.DELIVERY_DRONE.cost;
 
-        if (enoughSoup && !maxDrones) {
-            if (tryBuild(RobotType.DELIVERY_DRONE, Direction.NORTHWEST))
-                dronesBuilt++;
-
-            else if (tryBuild(RobotType.DELIVERY_DRONE, Direction.SOUTHEAST))
+        if (enoughSoup && !maxDrones)
+            if (tryBuild(RobotType.DELIVERY_DRONE, cornerLoc))
                 dronesBuilt++;
         }
-
-
-        /*for (Direction dir : directions)
-            tryBuild(RobotType.DELIVERY_DRONE, dir);
-            */
-    }
 
     static void runLandscaper() throws GameActionException {
 
     }
 
-
-    static void initDeliveryDrone() throws GameActionException {
-        readInitialMessage();
-    }
     static void runDeliveryDrone() throws GameActionException {
+        Direction dir = initDeliveryDrone();
+        MapLocation pos;
+
+        // whether or not the robot couldn't move last turn, true by default
+        boolean wasStuck = true;
+        boolean onPath = true;
+
+        while (true) {
+            turnCount++;
+
+            pos = rc.getLocation();
+
+            if (onPath)
+                wasStuck = patrol(pos, dir, wasStuck);
+
+            else if (!onPath)
+                returnToPath(pos);
+
+            Clock.getBytecodeNum();
+            Clock.yield();
+        }
+
+
+/*
+
+
         Team enemy = rc.getTeam().opponent();
         if (!rc.isCurrentlyHoldingUnit()) {
             // See if there are any enemy robots within striking range (distance 1 from lumberjack's radius)
@@ -189,7 +241,50 @@ public strictfp class RobotPlayer {
         } else {
             // No close robots, so search for robots within sight radius
             tryMove(randomDirection());
-        }
+        } */
+    }
+
+    static Direction initDeliveryDrone() throws GameActionException{
+        readInitialMessage();
+
+        MapLocation pos = rc.getLocation();
+
+        // If myHQ is to right of drone, prob on NW corner - should go up
+        if (myHQ.x > pos.x)
+            return Direction.NORTH;
+
+        // If myHQ is to left of drone, prob on SE corner - should go down
+        return Direction.SOUTH;
+    }
+
+    // updates delivery drone, and tells drone whether it has moved this turn
+    // true = has moved this turn, false = has not moved (stuck in spot)
+    static boolean patrol(MapLocation pos, Direction dir, boolean wasStuck) throws GameActionException {
+        boolean isAtCorner = pos.distanceSquaredTo(myHQ) == 18;
+        Direction newDir = dir;
+
+        // Don't try to turn drone if it was stuck on current location
+        // If drone begins its turn at corner of its path, and it's its first turn on
+        // the corner, turn it clockwise by 90 deg (rotateRight() twice)
+        if (!wasStuck && isAtCorner)
+            newDir = dir.rotateRight().rotateRight();
+
+        if (tryMove(newDir))
+            return false;
+
+        return true;
+
+
+    }
+
+    // Attempts to move towards myHQ, first straight, then slightly angled right, then slightly angled left
+    // If it can't move in any of these cases, cries
+
+    static void returnToPath(MapLocation pos) throws GameActionException {
+        Direction newDir = pos.directionTo(myHQ);
+
+        if (!tryMove(newDir) && tryMove(newDir.rotateRight()) && tryMove(newDir.rotateLeft()))
+             System.out.println("returnToPath(): I'm stuck!");
     }
 
     static void runNetGun() throws GameActionException {
