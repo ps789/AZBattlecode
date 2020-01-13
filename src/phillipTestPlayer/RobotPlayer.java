@@ -85,10 +85,12 @@ public strictfp class RobotPlayer {
     }
     static boolean shouldIBuildRefinery() throws GameActionException{
     	int currentSoup = 0;
+    	int sensedSquares = 0;
     	for(int i = -5; i<6; i++) {
             for(int j = -5; j < 6; j++) {
                 if(rc.canSenseLocation(rc.getLocation().translate(i,  j))) {
                     currentSoup += rc.senseSoup(rc.getLocation().translate(i,  j));
+                    sensedSquares++;
                 }
             }
         }
@@ -178,18 +180,6 @@ public strictfp class RobotPlayer {
 
             if(rc.isReady()) {
                 turnCount++;
-            	MapLocation refinery = hasRefinery();
-            	if(refinery != null) {
-            		myHQ = refinery;
-            	}else {
-                	if(shouldIBuildRefinery() ) {
-                		for(Direction direction : directions) {
-                			if(tryBuild(RobotType.REFINERY, direction)){
-                				continue;
-                			}
-                		}
-                	}
-            	}
                 if(!schoolBuilt && rc.getLocation().isAdjacentTo(schoolLocation) &&
                         rc.getTeamSoup() >= 150 && rc.getRoundNum() > 15) {
                     RobotInfo ri = rc.senseRobotAtLocation(schoolLocation);
@@ -203,6 +193,18 @@ public strictfp class RobotPlayer {
                 } else {
                     // If full return to base
                     if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
+                    	MapLocation refinery = hasRefinery();
+                    	if(refinery != null) {
+                    		myHQ = refinery;
+                    	}else {
+                        	if(shouldIBuildRefinery() ) {
+                        		for(Direction direction : directions) {
+                        			if(tryBuild(RobotType.REFINERY, direction)){
+                        				continue;
+                        			}
+                        		}
+                        	}
+                    	}
                         bugDirection2 = bugMoveReturn(bugDirection2);
                     }else {
                         for(Direction dir : directions) {
@@ -261,9 +263,9 @@ public strictfp class RobotPlayer {
                 tryMove(bugDirection);
                 return null;
             }
-            if(rc.canMove(bugDirection.rotateRight()) && rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && !rc.senseFlooding(rc.adjacentLocation(bugDirection))) {
+            if(rc.canMove(bugDirection.rotateRight()) && rc.canSenseLocation(rc.adjacentLocation(bugDirection.rotateRight())) && !rc.senseFlooding(rc.adjacentLocation(bugDirection.rotateRight()))) {
                 bugDirection = bugDirection.rotateRight();
-                if(rc.canMove(bugDirection.rotateRight()) && rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && !rc.senseFlooding(rc.adjacentLocation(bugDirection))) {
+                if(rc.canMove(bugDirection.rotateRight()) && rc.canSenseLocation(rc.adjacentLocation(bugDirection.rotateRight())) && !rc.senseFlooding(rc.adjacentLocation(bugDirection.rotateRight()))) {
                     tryMove(bugDirection.rotateRight());
                     if(bugDirection.rotateRight().equals(rc.getLocation().directionTo(targetLocation))) {
                         return null;
@@ -315,9 +317,9 @@ public strictfp class RobotPlayer {
                 tryMove(bugDirection);
                 return null;
             }
-            if(rc.canMove(bugDirection.rotateRight()) && rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && !rc.senseFlooding(rc.adjacentLocation(bugDirection))) {
+            if(rc.canMove(bugDirection.rotateRight()) && rc.canSenseLocation(rc.adjacentLocation(bugDirection.rotateRight())) && !rc.senseFlooding(rc.adjacentLocation(bugDirection.rotateRight()))) {
                 bugDirection = bugDirection.rotateRight();
-                if(rc.canMove(bugDirection.rotateRight()) && rc.canSenseLocation(rc.adjacentLocation(bugDirection)) && !rc.senseFlooding(rc.adjacentLocation(bugDirection))) {
+                if(rc.canMove(bugDirection.rotateRight()) && rc.canSenseLocation(rc.adjacentLocation(bugDirection.rotateRight())) && !rc.senseFlooding(rc.adjacentLocation(bugDirection.rotateRight()))) {
                     tryMove(bugDirection.rotateRight());
                     if(bugDirection.rotateRight().equals(rc.getLocation().directionTo(myHQ))) {
                         return null;
