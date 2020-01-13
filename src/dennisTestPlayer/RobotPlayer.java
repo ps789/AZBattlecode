@@ -88,7 +88,7 @@ public strictfp class RobotPlayer {
         }
         return (currentSoup >= 300 && (rc.getLocation().distanceSquaredTo(myHQ) > 25));
     }
-    static MapLocation hasRefinery() throws GameActionException{
+    static MapLocation hasRefinery() throws GameActionException {
         RobotInfo[] nearbyRobots = rc.senseNearbyRobots(35, rc.getTeam());
         for(RobotInfo robot : nearbyRobots) {
             if(robot.getType().equals(RobotType.REFINERY)) {
@@ -180,31 +180,37 @@ public strictfp class RobotPlayer {
 
             if(rc.isReady()) {
                 turnCount++;
-                MapLocation refinery = hasRefinery();
-                if(refinery != null) {
-                    myHQ = refinery;
-                }else {
-                    if(shouldIBuildRefinery() ) {
-                        for(Direction direction : directions) {
-                            if(tryBuild(RobotType.REFINERY, direction)){
-                                continue;
-                            }
-                        }
-                    }
-                }
-                if(!schoolBuilt && rc.getLocation().isAdjacentTo(schoolLocation) &&
-                        rc.getTeamSoup() >= 150 && rc.getRoundNum() > 15) {
-                    RobotInfo ri = rc.senseRobotAtLocation(schoolLocation);
-                    if(ri == null) {
-                        if(tryBuild(RobotType.DESIGN_SCHOOL, rc.getLocation().directionTo(schoolLocation)))
+                if(!schoolBuilt && rc.getTeamSoup() >= 150 && rc.getRoundNum() > 15) {
+                    if(rc.canSenseLocation(schoolLocation)) {
+
+                        RobotInfo ri = rc.senseRobotAtLocation(schoolLocation);
+                        if (ri == null) {
+                            if (tryBuild(RobotType.DESIGN_SCHOOL, rc.getLocation().directionTo(schoolLocation)))
+                                schoolBuilt = true;
+                        } else if (ri.getType() == RobotType.DESIGN_SCHOOL) {
                             schoolBuilt = true;
-                    } else if (ri.getType() == RobotType.DESIGN_SCHOOL) {
-                        schoolBuilt = true;
+                        }
+                    } else {
+                        for (int i=0; i<rc.getRoundNum(); i+=50)
+                        if(!schoolBuilt)
+                            pathTowards(schoolLocation);
                     }
 
                 } else {
                     // If full return to base
                     if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
+                        MapLocation refinery = hasRefinery();
+                        if(refinery != null) {
+                            myHQ = refinery;
+                        }else {
+                            if(shouldIBuildRefinery() ) {
+                                for(Direction direction : directions) {
+                                    if(tryBuild(RobotType.REFINERY, direction)){
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
                         bugDirection2 = bugMoveReturn(bugDirection2);
                     }else {
                         for(Direction dir : directions) {
