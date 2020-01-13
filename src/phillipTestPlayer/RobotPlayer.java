@@ -199,16 +199,21 @@ public strictfp class RobotPlayer {
 
             if(rc.isReady()) {
                 turnCount++;
-                if(!schoolBuilt && rc.getLocation().isAdjacentTo(schoolLocation) &&
-                        rc.getTeamSoup() >= 150 && rc.getRoundNum() > 15) {
-                    RobotInfo ri = rc.senseRobotAtLocation(schoolLocation);
-                    if(ri == null) {
-                        if(tryBuild(RobotType.DESIGN_SCHOOL, rc.getLocation().directionTo(schoolLocation)))
+                if(!schoolBuilt && rc.getTeamSoup() >= 150 && rc.getRoundNum() > 15) {
+                    if(rc.canSenseLocation(schoolLocation)) {
+                        RobotInfo ri = rc.senseRobotAtLocation(schoolLocation);
+                        if(ri == null) {
+                            if (rc.getLocation().isAdjacentTo(schoolLocation)) {
+                                if(rc.canBuildRobot(RobotType.DESIGN_SCHOOL, rc.getLocation().directionTo(schoolLocation))) {
+                                    rc.buildRobot(RobotType.DESIGN_SCHOOL, rc.getLocation().directionTo(schoolLocation));
+                                }
+                            } else {
+                                bugDirection = bugMoveMine(schoolLocation, bugDirection);
+                            }
+                        } else if (ri.getType() == RobotType.DESIGN_SCHOOL) {
                             schoolBuilt = true;
-                    } else if (ri.getType() == RobotType.DESIGN_SCHOOL) {
-                        schoolBuilt = true;
+                        }
                     }
-
                 } else {
                     // If full return to base
                 	if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
