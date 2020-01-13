@@ -423,12 +423,19 @@ public strictfp class RobotPlayer {
             readInitialMessage();
         }
 
-
+        int costLimiter = 150;
+        int increment = 2;
+        RobotInfo[] enemies = rc.senseNearbyRobots(-1, rc.getTeam().opponent());
+        for(RobotInfo ri : enemies) {
+            if(ri.getType() == RobotType.HQ)
+                increment = 17;
+        }
         while(true) {
-            if(rc.getTeamSoup() > 155 && rc.isReady()) {
+            if(rc.getTeamSoup() > costLimiter && rc.isReady()) {
                 if(tryBuild(RobotType.LANDSCAPER, mySide)) {
                     System.out.println("This design school has made landscaper " + turnCount);
                     turnCount++;
+                    costLimiter += increment;
                 }
             }
 
@@ -465,10 +472,13 @@ public strictfp class RobotPlayer {
             System.out.println("going to my room");
 
             // check if location is occupied by a landscaper
-            RobotInfo rf = rc.senseRobotAtLocation(destination);
-            if (rf != null) {
-                if (rf.type == RobotType.LANDSCAPER && rf.getTeam() == rc.getTeam() && rf.getID() != rc.getID())
-                    destination = myHQ.add(myHQ.directionTo(destination).rotateLeft());
+            RobotInfo rf = null;
+            if(rc.canSenseLocation(destination)) {
+                rf = rc.senseRobotAtLocation(destination);
+                if (rf != null) {
+                    if (rf.type == RobotType.LANDSCAPER && rf.getTeam() == rc.getTeam() && rf.getID() != rc.getID())
+                        destination = myHQ.add(myHQ.directionTo(destination).rotateLeft());
+                }
             }
 
             // try to get to destination
