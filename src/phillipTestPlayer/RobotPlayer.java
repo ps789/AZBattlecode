@@ -361,6 +361,7 @@ public strictfp class RobotPlayer {
     static void runMinerAttackTemplate(MapLocation[] targetLocations) throws GameActionException{
         Direction bugDirection = null;
         int currentChecking = 0;
+        boolean builtSchool = false;
         boolean foundHQ = false;
         while(true) {
             if(rc.isReady()) {
@@ -370,9 +371,18 @@ public strictfp class RobotPlayer {
                 }
                 if(foundHQ && rc.getLocation().isAdjacentTo(targetLocations[currentChecking])) {
                 	if(!hasDesignSchool()){
+                		
 	                	Direction currDir = rc.getLocation().directionTo(targetLocations[currentChecking]);
-	                	while(!tryBuild(RobotType.DESIGN_SCHOOL, currDir)){
-	                		currDir = currDir.rotateRight();
+						Direction[] directionTry = new Direction[] {
+								currDir.rotateRight(), currDir.rotateLeft(), currDir.rotateRight().rotateRight(), currDir.rotateLeft().rotateLeft(), currDir.opposite(), currDir.opposite().rotateLeft(), currDir.opposite().rotateRight()
+                		};
+	                	while(!builtSchool) {
+	                		for(Direction dir: directionTry) {
+	                			if(tryBuild(RobotType.DESIGN_SCHOOL, dir)) {
+	                				builtSchool = true;
+	                				continue;
+	                			}
+	                		}
 	                	}
                 	}
                     Clock.yield();
