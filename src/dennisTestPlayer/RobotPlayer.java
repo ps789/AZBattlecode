@@ -49,7 +49,6 @@ public strictfp class RobotPlayer {
      **/
     @SuppressWarnings("unused")
     public static void run(RobotController paramRC) throws GameActionException {
-
         // This is the RobotController object. You use it to perform actions from this robot,
         // and to get information on its current status.
         RobotPlayer.rc = paramRC;
@@ -59,7 +58,15 @@ public strictfp class RobotPlayer {
         System.out.println("I'm a " + rc.getType() + "! Location " + rc.getLocation());
         switch (rc.getType()) {
             case HQ:                 runHQ();                break;
-            case MINER:              runMiner();             break;
+            case MINER:              {
+                if(rc.getRoundNum()==2)
+                    runMinerAttack();
+                else if(rc.getRoundNum()==3){
+                    runMinerAttack2();
+                }else {
+                    runMiner();
+                }
+            }
             case REFINERY:           runRefinery();          break;
             case VAPORATOR:          runVaporator();         break;
             case DESIGN_SCHOOL:      runDesignSchool();      break;
@@ -70,13 +77,49 @@ public strictfp class RobotPlayer {
         }
 
     }
-
+    static boolean shouldIBuildRefinery() throws GameActionException{
+        int currentSoup = 0;
+        for(int i = -5; i<6; i++) {
+            for(int j = -5; j < 6; j++) {
+                if(rc.canSenseLocation(rc.getLocation().translate(i,  j))) {
+                    currentSoup += rc.senseSoup(rc.getLocation().translate(i,  j));
+                }
+            }
+        }
+        return (currentSoup >= 300 && (rc.getLocation().distanceSquaredTo(myHQ) > 25));
+    }
+    static MapLocation hasRefinery() throws GameActionException{
+        RobotInfo[] nearbyRobots = rc.senseNearbyRobots(35, rc.getTeam());
+        for(RobotInfo robot : nearbyRobots) {
+            if(robot.getType().equals(RobotType.REFINERY)) {
+                return robot.getLocation();
+            }
+        }
+        return null;
+    }
+    static boolean hasDesignSchool() throws GameActionException{
+        RobotInfo[] nearbyRobots = rc.senseNearbyRobots(35, rc.getTeam());
+        for(RobotInfo robot : nearbyRobots) {
+            if(robot.getType().equals(RobotType.DESIGN_SCHOOL)) {
+                return true;
+            }
+        }
+        return false;
+    }
     static void runHQ() throws GameActionException {
         myHQ = rc.getLocation();
         sendInitialMessage();
 
         System.out.println(Clock.getBytecodeNum());
         while(true) {
+            // int directionInt;
+            if(myHQ.x < rc.getMapWidth()/2) {
+                mySide = Direction.WEST;
+                // directionInt = 3;
+            } else {
+                mySide = Direction.EAST;
+                // directionInt = 4;
+            }
             if(turnCount < 4 && rc.isReady() && rc.getTeamSoup() >= 70) {
                 if (tryBuild(RobotType.MINER, mySide.opposite())) {
                     turnCount++;
@@ -109,7 +152,7 @@ public strictfp class RobotPlayer {
         }
 
         MapLocation schoolLocation = myHQ.add(mySide.rotateRight().rotateRight().rotateRight())
-                                         .add(mySide.rotateRight().rotateRight().rotateRight());
+                .add(mySide.rotateRight().rotateRight().rotateRight());
         MapLocation targetLocation = rc.getLocation();
         Direction setDirection = randomDirection();
         boolean foundSoup = false;
@@ -121,7 +164,6 @@ public strictfp class RobotPlayer {
         setPositionsAroundHQ(myHQ);
 
         while(true) {
-
             if(!foundSoup || (rc.canSenseLocation(targetLocation) && rc.senseSoup(targetLocation)<=0)) {
                 foundSoup = false;
                 for(int i = -5; i<6; i++) {
@@ -138,7 +180,18 @@ public strictfp class RobotPlayer {
 
             if(rc.isReady()) {
                 turnCount++;
-
+                MapLocation refinery = hasRefinery();
+                if(refinery != null) {
+                    myHQ = refinery;
+                }else {
+                    if(shouldIBuildRefinery() ) {
+                        for(Direction direction : directions) {
+                            if(tryBuild(RobotType.REFINERY, direction)){
+                                continue;
+                            }
+                        }
+                    }
+                }
                 if(!schoolBuilt && rc.getLocation().isAdjacentTo(schoolLocation) &&
                         rc.getTeamSoup() >= 150 && rc.getRoundNum() > 15) {
                     RobotInfo ri = rc.senseRobotAtLocation(schoolLocation);
@@ -155,7 +208,7 @@ public strictfp class RobotPlayer {
                         bugDirection2 = bugMoveReturn(bugDirection2);
                     }else {
                         for(Direction dir : directions) {
-                            if(rc.canSenseLocation(rc.adjacentLocation(dir)) && rc.senseSoup(rc.adjacentLocation(dir))>0 && !rc.adjacentLocation(mySide).equals(myHQ)) {
+                            if(rc.canSenseLocation(rc.adjacentLocation(dir)) && rc.senseSoup(rc.adjacentLocation(dir))>0) {
                                 foundSoup = true;
                                 targetLocation = rc.adjacentLocation(dir);
                             }
@@ -286,47 +339,65 @@ public strictfp class RobotPlayer {
             }
         }
     }
-    static void runMinerAttack() throws GameActionException{
-        MapLocation myLocation  = rc.getLocation();
-        Direction bugDirection = null;
-        if(myLocation.x < rc.getMapWidth()/2) {
-            mySide = Direction.WEST;
-        } else {
-            mySide = Direction.EAST;
+    static void runMinerAttack2() throws GameActionException{
+        while(mySide == Direction.CENTER) {
+            if(rc.getRoundNum() > 1) {
+                readInitialMessage();
+            }
         }
-        myHQ = rc.adjacentLocation(mySide);
+        runMinerAttackTemplate(new MapLocation[]{(new MapLocation(myHQ.x, rc.getMapHeight()-myHQ.y-1)),
+                (new MapLocation(rc.getMapWidth()-myHQ.x-1, rc.getMapHeight()-myHQ.y-1))});
+    }
+
+    static void runMinerAttack() throws GameActionException{
+        while(mySide == Direction.CENTER) {
+            if(rc.getRoundNum() > 1) {
+                readInitialMessage();
+            }
+        }
+        runMinerAttackTemplate(new MapLocation[]{new MapLocation(rc.getMapWidth()-myHQ.x-1, myHQ.y)});
+    }
+
+    static void runMinerAttackTemplate(MapLocation[] targetLocations) throws GameActionException{
+        Direction bugDirection = null;
         int currentChecking = 0;
         boolean foundHQ = false;
-        MapLocation[] targetLocations = new MapLocation[]{(new MapLocation(rc.getMapWidth()-myHQ.x-1, myHQ.y)),
-                (new MapLocation(rc.getMapWidth()-myHQ.x-1, rc.getMapHeight()-myHQ.y-1)),
-                (new MapLocation(rc.getMapWidth(), rc.getMapHeight()-myHQ.y-1))};
         while(true) {
             if(rc.isReady()) {
                 turnCount++;
-                if(turnCount%100 == 0 && !foundHQ) {
+                if(turnCount%80 == 0 && !foundHQ) {
                     currentChecking++;
                 }
                 if(foundHQ && rc.getLocation().isAdjacentTo(targetLocations[currentChecking])) {
+                    if(!hasDesignSchool()){
+                        Direction currDir = rc.getLocation().directionTo(targetLocations[currentChecking]);
+                        while(!tryBuild(RobotType.DESIGN_SCHOOL, currDir)){
+                            currDir = currDir.rotateRight();
+                        }
+                    }
                     Clock.yield();
+                    runMiner();
                 }else {
-                    if(currentChecking == 3) {
-                        while(true) {
-                            Clock.yield();
-                        }
+                    if(currentChecking >= targetLocations.length) {
+                        runMiner();
                     }else {
-                        if(rc.canSenseLocation(targetLocations[currentChecking]) && (rc.senseRobotAtLocation(targetLocations[currentChecking]) == null || !rc.senseRobotAtLocation(targetLocations[currentChecking]).getType().equals(RobotType.HQ))) {
-                            currentChecking++;
-                        }
                         if(rc.canSenseLocation(targetLocations[currentChecking]) && !(rc.senseRobotAtLocation(targetLocations[currentChecking]) == null) && rc.senseRobotAtLocation(targetLocations[currentChecking]).getType().equals(RobotType.HQ)) {
                             foundHQ = true;
                         }
-                        bugDirection = bugMoveMine(targetLocations[currentChecking], bugDirection);
+                        else if(rc.canSenseLocation(targetLocations[currentChecking]) && (rc.senseRobotAtLocation(targetLocations[currentChecking]) == null || !rc.senseRobotAtLocation(targetLocations[currentChecking]).getType().equals(RobotType.HQ))) {
+                            currentChecking++;
+                        }
+                        if(currentChecking >= targetLocations.length) {
+                            runMiner();
+                        }else {
+                            bugDirection = bugMoveMine(targetLocations[currentChecking], bugDirection);
+                        }
                     }
                 }
             }
         }
-    }
 
+    }
     static boolean tryMove(Direction dir) throws GameActionException {
         // System.out.println("I am trying to move " + dir + "; " + rc.isReady() + " " + rc.getCooldownTurns() + " " + rc.canMove(dir));
         if (rc.isReady() && rc.canMove(dir)) {
@@ -351,39 +422,16 @@ public strictfp class RobotPlayer {
         while(mySide == Direction.CENTER) {
             readInitialMessage();
         }
+
+
         while(true) {
             if(rc.getTeamSoup() > 155 && rc.isReady()) {
-
-                switch (turnCount) {
-                    case 1:
-                    case 2:
-                    case 3:
-                    case 4:
-                    case 5:
-                    case 6:
-                    case 7:
-                    case 8:
-                    case 9:
-                    case 10:
-                    case 11:
-                    case 12:
-                    case 13:
-                    case 14:
-                    case 15:
-                    case 16:
-                        if(tryBuild(RobotType.LANDSCAPER, mySide)) {
-                            System.out.println("defensive landscaper created");
-                            turnCount++;
-                        } break;
-                    default:
-                        if(tryBuild(RobotType.LANDSCAPER, mySide.opposite())) {
-                            System.out.println("offensive landscaper created");
-                            turnCount++;
-                    } break;
+                if(tryBuild(RobotType.LANDSCAPER, mySide)) {
+                    System.out.println("This design school has made landscaper " + turnCount);
+                    turnCount++;
                 }
-
-                System.out.println("Design school has made landscaper " + turnCount);
             }
+
             Clock.yield();
         }
     }
@@ -395,9 +443,14 @@ public strictfp class RobotPlayer {
             }
         }
 
-        setPositionsAroundHQ(myHQ);
+        boolean foundEnemyHQ = false;
+        RobotInfo[] startScan = rc.senseNearbyRobots(-1, rc.getTeam().opponent());
+        for(RobotInfo ri : startScan) {
+            if(ri.getType() == RobotType.HQ)
+                foundEnemyHQ = true;
+        }
 
-        if (findCreator() == mySide) {
+        if (foundEnemyHQ) {
             runLandscaperOffense();
         } else {
             runLandscaperDefense();
@@ -405,32 +458,7 @@ public strictfp class RobotPlayer {
     }
     static void runLandscaperDefense() throws GameActionException {
         System.out.println("I am on defense!");
-        while (rc.getLocation().distanceSquaredTo(myHQ) > 3) {
-            System.out.println("I want to go home.");
-            if (rc.isReady() && pathTowards(myHQ))
-                turnCount++;
-        }
-
-        /* this code doesn't work until tomorrow's update
-        int[] positionOrder = {1,2,3,4,5,6,7,8,23,21,29,17,15,13,11,9};
-        MapLocation destination = null;
-        int iter = 0;
-        while(destination == null) {
-            if(rc.onTheMap(positions[positionOrder[iter]])) {
-                destination = positions[positionOrder[iter]];
-            } else {
-                iter++;
-            }
-        }
-        // for checking if location is occupied
-        while (spotTaken(destination)) {
-            if(rc.onTheMap(positions[positionOrder[iter]])) {
-                destination = positions[positionOrder[iter]];
-            } else {
-                iter++;
-            }
-        }
-        */
+        setPositionsAroundHQ(myHQ);
 
         MapLocation destination = positions[1];
         while (!destination.equals(rc.getLocation())) {
@@ -455,7 +483,7 @@ public strictfp class RobotPlayer {
                 System.out.println("defend.");
                 if (rc.getDirtCarrying() < RobotType.LANDSCAPER.dirtLimit) {
                     System.out.println("Collecting Dirt");
-                    tryDefensiveDig();
+                    tryDigDefensive();
                 }
                 else
                     rc.depositDirt(Direction.CENTER);
@@ -466,26 +494,27 @@ public strictfp class RobotPlayer {
     }
     static void runLandscaperOffense() throws GameActionException {
         System.out.println("I am on offense!");
-        // find enemy base and sit next to it
+        ;
+        // find enemy base and attack it
         String targetFound = "_";
         MapLocation enemySchool = null;
         MapLocation enemyHQ = null;;
         Direction setDirection = null;
 
         while(true) {
-            if(targetFound.equals("_") || targetFound.equals("hq")) {
+            if(targetFound.equals("_")) {
                 RobotInfo[] enemyList = rc.senseNearbyRobots(-1, rc.getTeam().opponent());
                 for(RobotInfo ri : enemyList) {
                     switch (ri.getType()) {
                         case DESIGN_SCHOOL:
                             enemySchool = ri.getLocation();
-                            targetFound = "school";
+                            if(targetFound.equals("hq"))
+                                targetFound = "school";
                             break;
                         case HQ:
                             enemyHQ = ri.getLocation();
-                            if(!targetFound.equals("school")) {
-                                targetFound = "hq";
-                            }
+                            setPositionsAroundHQ(enemyHQ);
+                            targetFound = "hq";
                             break;
                     }
                 }
@@ -523,106 +552,94 @@ public strictfp class RobotPlayer {
                             }
                         }
                         break;
+
                     case "hq":
-                        if (!rc.getLocation().isAdjacentTo(enemyHQ))
-                            pathTowards(enemyHQ);
-                        else {
-                            if (rc.getDirtCarrying() > 0) {
-                                if (rc.canDepositDirt(rc.getLocation().directionTo(enemyHQ)))
+                        if (rc.getLocation().isAdjacentTo(enemyHQ)) {
+                            while (rc.getLocation().isAdjacentTo(enemyHQ)) {
+                                if(rc.canDepositDirt(rc.getLocation().directionTo(enemyHQ))) {
                                     rc.depositDirt(rc.getLocation().directionTo(enemyHQ));
-                            } else {
-                                if (rc.canDigDirt(rc.getLocation().directionTo(enemyHQ).rotateLeft()))
-                                    rc.digDirt(rc.getLocation().directionTo(enemyHQ).rotateLeft());
-                                else if (rc.canDigDirt(rc.getLocation().directionTo(enemyHQ).rotateRight()))
-                                    rc.digDirt(rc.getLocation().directionTo(enemyHQ).rotateRight());
-                                else if (rc.canDigDirt(enemyHQ.directionTo(rc.getLocation())))
-                                    rc.digDirt(enemyHQ.directionTo(rc.getLocation()));
+                                } else {
+                                    rc.digDirt(Direction.CENTER);
+                                }
                             }
+                        } else {
+
+                            if(rc.canSenseLocation(positions[1]))
+                                if(rc.senseRobotAtLocation(positions[1]) != null)
+                            if(rc.canSenseLocation(positions[2]))
+                                if(rc.senseRobotAtLocation(positions[2]) != null)
+                            if(rc.canSenseLocation(positions[3]))
+                                if(rc.senseRobotAtLocation(positions[3]) != null)
+                            if(rc.canSenseLocation(positions[4]))
+                                if(rc.senseRobotAtLocation(positions[4]) != null)
+                            if(rc.canSenseLocation(positions[5]))
+                                if(rc.senseRobotAtLocation(positions[5]) != null)
+                            if(rc.canSenseLocation(positions[6]))
+                                if(rc.senseRobotAtLocation(positions[6]) != null)
+                            if(rc.canSenseLocation(positions[7]))
+                                if(rc.senseRobotAtLocation(positions[7]) != null)
+                            if(rc.canSenseLocation(positions[8]))
+                                if(rc.senseRobotAtLocation(positions[8]) != null) {
+                                    if(enemySchool != null)
+                                        targetFound = "school";
+                                    else
+                                        targetFound = "_";
+                                }
+
+                            pathTowards(enemyHQ);
                         }
+                        break;
+
                     default:
-                        if (turnCount%10==0 || setDirection == null) {
-                            Direction newDirection = randomDirection();
-                            if(setDirection == null) {
-                                setDirection = newDirection;
+                        if (setDirection == null) {
+                            setDirection = directions[(int)(Math.random()*8)];
+                        } else if (turnCount % 10 == 0) {
+                            Direction newDirection = directions[(int)(Math.random()*8)];
+                            while(newDirection == setDirection) {
+                                newDirection = directions[(int) (Math.random() * 8)];
                             }
-                            while(newDirection.equals(setDirection.opposite())) {
-                                newDirection = randomDirection();
-                            }
-                            setDirection = newDirection;
                         }
                         while((rc.canSenseLocation(rc.adjacentLocation(setDirection)) && rc.senseFlooding(rc.adjacentLocation(setDirection))) || !rc.canMove(setDirection))
-                            setDirection = randomDirection();
-
+                            setDirection = directions[(int)(Math.random()*8)];
                         tryMove(setDirection);
+                        break;
                 }
             }
 
             Clock.yield();
         }
     }
-    static void tryDefensiveDig() throws GameActionException {
+    static void tryDigDefensive() throws GameActionException {
         switch (myPosition) {
             case 6:
             case 7:
             case 8:
-            case 23:
-            case 21:
                 if(rc.canDigDirt(rc.getLocation().directionTo(myHQ)))
                     rc.digDirt(rc.getLocation().directionTo(myHQ));
-
-                else if (rc.canDigDirt(rc.getLocation().directionTo(
-                        myHQ.add(Direction.NORTH).add(Direction.NORTH))))
-                    rc.digDirt(rc.getLocation().directionTo(
-                            myHQ.add(Direction.NORTH).add(Direction.NORTH)));
-
-                System.out.println(myHQ.add(Direction.NORTH).add(Direction.NORTH).x + ","
-                        + myHQ.add(Direction.NORTH).add(Direction.NORTH).y);
+                else if (rc.canDigDirt(rc.getLocation().directionTo(positions[22])))
+                    rc.digDirt(rc.getLocation().directionTo(positions[22]));
                 break;
             case 5:
-            case 17:
-            case 19:
                 if(rc.canDigDirt(rc.getLocation().directionTo(myHQ)))
                     rc.digDirt(rc.getLocation().directionTo(myHQ));
-
-                else if (rc.canDigDirt(rc.getLocation().directionTo(
-                        myHQ.add(Direction.EAST).add(Direction.EAST))))
-                    rc.digDirt(rc.getLocation().directionTo(
-                            myHQ.add(Direction.EAST).add(Direction.EAST)));
+                else if (rc.canDigDirt(rc.getLocation().directionTo(positions[18])))
+                    rc.digDirt(rc.getLocation().directionTo(positions[18]));
                 break;
             case 1:
-            case 9:
-            case 11:
                 if(rc.canDigDirt(rc.getLocation().directionTo(myHQ)))
                     rc.digDirt(rc.getLocation().directionTo(myHQ));
-                else if (rc.canDigDirt(rc.getLocation().directionTo(
-                        myHQ.add(Direction.WEST).add(Direction.WEST))))
-                    rc.digDirt(rc.getLocation().directionTo(
-                            myHQ.add(Direction.WEST).add(Direction.WEST)));
+                else if (rc.canDigDirt(rc.getLocation().directionTo(positions[10])))
+                    rc.digDirt(rc.getLocation().directionTo(positions[10]));
                 break;
             case 2:
             case 3:
             case 4:
-            case 13:
-            case 14:
                 if(rc.canDigDirt(rc.getLocation().directionTo(myHQ)))
                     rc.digDirt(rc.getLocation().directionTo(myHQ));
-
-                else if (rc.canDigDirt(rc.getLocation().directionTo(
-                        myHQ.add(Direction.SOUTH).add(Direction.SOUTH))))
-                    rc.digDirt(rc.getLocation().directionTo(
-                            myHQ.add(Direction.SOUTH).add(Direction.SOUTH)));
-
-                System.out.println(myHQ.add(Direction.NORTH).add(Direction.NORTH).x + ","
-                        + myHQ.add(Direction.NORTH).add(Direction.NORTH).y);
+                else if (rc.canDigDirt(rc.getLocation().directionTo(positions[14])))
+                    rc.digDirt(rc.getLocation().directionTo(positions[14]));
                 break;
         }
-    }
-    static boolean spotTaken(MapLocation destination) throws GameActionException{
-        RobotInfo rf = rc.senseRobotAtLocation(destination);
-        return ( rf             !=  null                    &&
-                 rf.type        ==  RobotType.LANDSCAPER    &&
-                 rf.getTeam()   ==  rc.getTeam()            &&
-                 rf.getID()     !=  rc.getID()              );
     }
     static int getMyPosition(Direction dir) {
         switch (dir) {
@@ -670,9 +687,8 @@ public strictfp class RobotPlayer {
      * @return a random Direction
      */
     static Direction randomDirection() {
-        return directions2[(int)(Math.random() * directions2.length)];
+        return directions2[(int) (Math.random() * directions2.length)];
     }
-
 
     /**
      * Returns a random RobotType spawned by miners.
@@ -851,7 +867,7 @@ public strictfp class RobotPlayer {
             directionInt = 4;
         }
 
-        rc.submitTransaction(new int[] {(698 + myHQ.x), 155, (myHQ.y + 420), 510, directionInt}, 2);
+        rc.submitTransaction(new int[] {(698 + myHQ.x), 165, (myHQ.y + 420), 510, directionInt}, 2);
     }
 
     /**
@@ -866,9 +882,9 @@ public strictfp class RobotPlayer {
             roundBlock = rc.getBlock(round);
             for(Transaction t : roundBlock) {
                 if( t.getMessage().length  == 5     &&
-                    t.getCost()            == 2     &&
-                    t.getMessage()[1]      == 155   &&
-                    t.getMessage()[3]      == 510)  {
+                        t.getCost()            == 2     &&
+                        t.getMessage()[1]      == 165   &&
+                        t.getMessage()[3]      == 510)  {
                     System.out.println("password found by: " + rc.getType());
                     for (int i = 0; i < t.getMessage().length; i++) {
                         myHQ = new MapLocation(t.getMessage()[0] - 698, t.getMessage()[2] - 420);
