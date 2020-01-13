@@ -55,7 +55,6 @@ public strictfp class RobotPlayer {
      **/
     @SuppressWarnings("unused")
     public static void run(RobotController paramRC) throws GameActionException {
-
         // This is the RobotController object. You use it to perform actions from this robot,
         // and to get information on its current status.
         RobotPlayer.rc = paramRC;
@@ -65,7 +64,13 @@ public strictfp class RobotPlayer {
         System.out.println("I'm a " + rc.getType() + "! Location " + rc.getLocation());
         switch (rc.getType()) {
             case HQ:                 runHQ();                break;
-            case MINER:              runMiner();             break;
+            case MINER:              {
+            	if(rc.getRoundNum()<=2)
+            			runMinerAttack();
+            	else {
+            		runMiner();
+            	}
+            }
             case REFINERY:           runRefinery();          break;
             case VAPORATOR:          runVaporator();         break;
             case DESIGN_SCHOOL:      runDesignSchool();      break;
@@ -89,13 +94,21 @@ public strictfp class RobotPlayer {
     }
     static MapLocation hasRefinery() throws GameActionException{
     	RobotInfo[] nearbyRobots = rc.senseNearbyRobots(35, rc.getTeam());
-		boolean hasRefinery = false;
 		for(RobotInfo robot : nearbyRobots) {
 			if(robot.getType().equals(RobotType.REFINERY)) {
 				return robot.getLocation();
 			}
 		}
 		return null;
+    }
+    static boolean hasDesignSchool() throws GameActionException{
+    	RobotInfo[] nearbyRobots = rc.senseNearbyRobots(35, rc.getTeam());
+		for(RobotInfo robot : nearbyRobots) {
+			if(robot.getType().equals(RobotType.DESIGN_SCHOOL)) {
+				return true;
+			}
+		}
+		return false;
     }
     static void runHQ() throws GameActionException {
         myHQ = rc.getLocation();
@@ -335,9 +348,9 @@ public strictfp class RobotPlayer {
         myHQ = rc.adjacentLocation(mySide);
         int currentChecking = 0;
         boolean foundHQ = false;
-        MapLocation[] targetLocations = new MapLocation[]{(new MapLocation(rc.getMapWidth()-myHQ.x-1, myHQ.y)),
-                (new MapLocation(rc.getMapWidth()-myHQ.x-1, rc.getMapHeight()-myHQ.y-1)),
-                (new MapLocation(rc.getMapWidth(), rc.getMapHeight()-myHQ.y-1))};
+        MapLocation[] targetLocations = new MapLocation[]{(new MapLocation(rc.getMapWidth(), rc.getMapHeight()-myHQ.y-1)),
+        		(new MapLocation(rc.getMapWidth()-myHQ.x-1, rc.getMapHeight()-myHQ.y-1)),
+                (new MapLocation(rc.getMapWidth()-myHQ.x-1, myHQ.y))};
         while(true) {
             if(rc.isReady()) {
                 turnCount++;
@@ -345,6 +358,12 @@ public strictfp class RobotPlayer {
                     currentChecking++;
                 }
                 if(foundHQ && rc.getLocation().isAdjacentTo(targetLocations[currentChecking])) {
+                	if(!hasDesignSchool()){
+	                	Direction currDir = rc.getLocation().directionTo(targetLocations[currentChecking]);
+	                	while(!tryBuild(RobotType.DESIGN_SCHOOL, currDir)){
+	                		currDir = currDir.rotateRight();
+	                	}
+                	}
                     Clock.yield();
                 }else {
                     if(currentChecking == 3) {
