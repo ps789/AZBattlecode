@@ -83,18 +83,30 @@ public strictfp class RobotPlayer {
         }
 
     }
-    static boolean shouldIBuildRefinery() throws GameActionException{
+    static MapLocation shouldIBuildRefinery() throws GameActionException{
     	int currentSoup = 0;
-    	int sensedSquares = 0;
+    	MapLocation closestSoup = null;
     	for(int i = -5; i<6; i++) {
             for(int j = -5; j < 6; j++) {
                 if(rc.canSenseLocation(rc.getLocation().translate(i,  j))) {
-                    currentSoup += rc.senseSoup(rc.getLocation().translate(i,  j));
-                    sensedSquares++;
+                    int sensedSoup = rc.senseSoup(rc.getLocation().translate(i,  j));
+                    if(sensedSoup > 0) {
+                    	currentSoup += sensedSoup;
+                    	if(closestSoup == null) {
+                    		closestSoup = rc.getLocation().translate(i,  j);
+                    	}else {
+                    		if(rc.getLocation().distanceSquaredTo(rc.getLocation().translate(i, j))<rc.getLocation().distanceSquaredTo(closestSoup)) {
+                    			closestSoup = rc.getLocation().translate(i, j);
+                    		}
+                    	}
+                    }
                 }
             }
         }
-    	return (currentSoup >= 300 && (rc.getLocation().distanceSquaredTo(myHQ) > 25));
+    	if (currentSoup >= 200 && (rc.getLocation().distanceSquaredTo(myHQ) > 25)) {
+    		
+    	}
+    	return closestSoup;
     }
     static MapLocation hasRefinery() throws GameActionException{
     	RobotInfo[] nearbyRobots = rc.senseNearbyRobots(35, rc.getTeam());
@@ -158,17 +170,16 @@ public strictfp class RobotPlayer {
                 readInitialMessage();
             }
         }
-
+        
         MapLocation schoolLocation = myHQ.add(mySide.rotateRight().rotateRight().rotateRight())
                                          .add(mySide.rotateRight().rotateRight().rotateRight());
         MapLocation targetLocation = rc.getLocation();
         Direction setDirection = randomDirection();
         boolean foundSoup = false;
         boolean schoolBuilt = false;
-        boolean refineryBuilt = false;
         Direction bugDirection = null;
         Direction bugDirection2 = null;
-
+    	int returnCount = 0;
         setPositionsAroundHQ(myHQ);
 
         while(true) {
@@ -200,21 +211,41 @@ public strictfp class RobotPlayer {
 
                 } else {
                     // If full return to base
-                    if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
+                	if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
+                    	returnCount++;
                     	MapLocation refinery = hasRefinery();
                     	if(refinery != null) {
                     		myHQ = refinery;
                     	}else {
-                        	if(shouldIBuildRefinery() ) {
+                    		MapLocation closestSoup = shouldIBuildRefinery();
+                        	if(closestSoup != null) {
                         		for(Direction direction : directions) {
                         			if(tryBuild(RobotType.REFINERY, direction)){
+                        				returnCount = 0;
                         				continue;
                         			}
+                        		}if(rc.getLocation().distanceSquaredTo(closestSoup)< rc.getLocation().distanceSquaredTo(targetLocation)) {
+                        			targetLocation = closestSoup;
                         		}
                         	}
                     	}
-                        bugDirection2 = bugMoveReturn(bugDirection2);
+                    	if(returnCount < 100) {
+                    		bugDirection2 = bugMoveReturn(bugDirection2);
+                    		returnCount++;
+                    	}else {
+                    		if (turnCount%10==0) {
+                                Direction newDirection = randomDirection();
+                                while(newDirection == setDirection) {
+                                    newDirection = randomDirection();
+                                }
+                                setDirection = newDirection;
+                            }
+                            while((rc.canSenseLocation(rc.adjacentLocation(setDirection)) && rc.senseFlooding(rc.adjacentLocation(setDirection))) || !rc.canMove(setDirection))
+                                setDirection = directions[(int)(Math.random()*8)];
+                            tryMove(setDirection);
+                    	}
                     }else {
+                    	returnCount = 0;
                         for(Direction dir : directions) {
                             if(rc.canSenseLocation(rc.adjacentLocation(dir)) && rc.senseSoup(rc.adjacentLocation(dir))>0) {
                                 foundSoup = true;
@@ -449,7 +480,7 @@ public strictfp class RobotPlayer {
             readInitialMessage();
         }
         while(true) {
-            if(rc.getTeamSoup() > 155 && rc.isReady()) {
+            if(rc.getTeamSoup() > 300 && rc.isReady()) {
 
                 switch (turnCount) {
                     case 1:
