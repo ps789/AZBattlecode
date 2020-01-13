@@ -103,8 +103,8 @@ public strictfp class RobotPlayer {
                 }
             }
         }
-    	if (currentSoup >= 200 && (rc.getLocation().distanceSquaredTo(myHQ) > 25)) {
-    		
+    	if (!(currentSoup >= 200 && (rc.getLocation().distanceSquaredTo(myHQ) > 25))) {
+    		return null;
     	}
     	return closestSoup;
     }
