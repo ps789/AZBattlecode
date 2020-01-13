@@ -514,8 +514,13 @@ public strictfp class RobotPlayer {
     static void runLandscaperDefense() throws GameActionException {
         System.out.println("I am on defense!");
         setPositionsAroundHQ(myHQ);
+        int[] targetPositions = {   1,2,3,4,5,6,7,8,
+                                    1,2,3,4,5,6,7,8,
+                                    23,19,15,11,9,21,17,13,
+                                    23,19,15,11,9,21,17,13 };
+        int destinationInt = 0;
 
-        MapLocation destination = positions[1];
+        MapLocation destination = positions[targetPositions[destinationInt]];
         while (!destination.equals(rc.getLocation())) {
             System.out.println("going to my room");
 
@@ -524,8 +529,11 @@ public strictfp class RobotPlayer {
             if(rc.canSenseLocation(destination)) {
                 rf = rc.senseRobotAtLocation(destination);
                 if (rf != null) {
-                    if (rf.type == RobotType.LANDSCAPER && rf.getTeam() == rc.getTeam() && rf.getID() != rc.getID())
-                        destination = myHQ.add(myHQ.directionTo(destination).rotateLeft());
+                    if ((rf.type == RobotType.LANDSCAPER) && (rf.getTeam() == rc.getTeam()) &&
+                            (rf.getID() != rc.getID()) && (destinationInt < 32)) {
+                        destinationInt++;
+                        destination = positions[targetPositions[destinationInt]];
+                    }
                 }
             }
 
@@ -542,7 +550,7 @@ public strictfp class RobotPlayer {
                                 turnCount++;
                             }
                         }
-                    } else if (rc.senseElevation(rc.getLocation()) > rc.senseElevation(destination)+3) {
+                    } else if (rf == null && rc.senseElevation(rc.getLocation()) > rc.senseElevation(destination)+3) {
                         if (rc.canDepositDirt(rc.getLocation().directionTo(destination))) {
                             rc.depositDirt(rc.getLocation().directionTo(destination));
                             turnCount++;
@@ -552,7 +560,7 @@ public strictfp class RobotPlayer {
                                 turnCount++;
                             }
                         }
-                    } else if (rc.senseElevation(rc.getLocation()) < rc.senseElevation(destination)-3) {
+                    } else if (rf == null && rc.senseElevation(rc.getLocation()) < rc.senseElevation(destination)-3) {
                         if(rc.canDigDirt(rc.getLocation().directionTo(destination))) {
                             rc.digDirt(rc.getLocation().directionTo(destination));
                             turnCount++;
@@ -567,22 +575,29 @@ public strictfp class RobotPlayer {
 
             System.out.println("I am here: " + rc.getLocation().x + "," + rc.getLocation().y);
             System.out.println("My Room is here: " + destination.x + "," + destination.y);
+            Clock.yield();
         }
 
         System.out.println("I should dig now!");
-        myPosition = getMyPosition(myHQ.directionTo(rc.getLocation()));
+        myPosition = targetPositions[destinationInt];
         while(true) {
             if (rc.isReady()) {
                 System.out.println("defend.");
                 if (rc.getDirtCarrying() < RobotType.LANDSCAPER.dirtLimit) {
                     System.out.println("Collecting Dirt");
                     tryDigDefensive();
+                } else {
+                    if (myPosition > 8 && rc.senseElevation(rc.getLocation()) >= 20) {
+                        System.out.println("landscaper at pos#" + myPosition + " is at "
+                                + rc.getLocation().x + rc.getLocation().y);
+                        despositDirtAtLowest();
+                    } else {
+                        rc.depositDirt(Direction.CENTER);
+                    }
                 }
-                else
-                    rc.depositDirt(Direction.CENTER);
-            } else {
-                Clock.yield();
             }
+
+            Clock.yield();
         }
     }
     static void runLandscaperOffense() throws GameActionException {
@@ -713,16 +728,22 @@ public strictfp class RobotPlayer {
             case 8:
                 if(rc.canDigDirt(rc.getLocation().directionTo(myHQ)))
                     rc.digDirt(rc.getLocation().directionTo(myHQ));
-                else if (rc.canDigDirt(rc.getLocation().directionTo(positions[22])))
+            case 21:
+            case 23:
+                if (rc.canDigDirt(rc.getLocation().directionTo(positions[22])))
                     rc.digDirt(rc.getLocation().directionTo(positions[22]));
                 break;
             case 5:
+            case 17:
+            case 19:
                 if(rc.canDigDirt(rc.getLocation().directionTo(myHQ)))
                     rc.digDirt(rc.getLocation().directionTo(myHQ));
                 else if (rc.canDigDirt(rc.getLocation().directionTo(positions[18])))
                     rc.digDirt(rc.getLocation().directionTo(positions[18]));
                 break;
             case 1:
+            case 9:
+            case 11:
                 if(rc.canDigDirt(rc.getLocation().directionTo(myHQ)))
                     rc.digDirt(rc.getLocation().directionTo(myHQ));
                 else if (rc.canDigDirt(rc.getLocation().directionTo(positions[10])))
@@ -731,6 +752,8 @@ public strictfp class RobotPlayer {
             case 2:
             case 3:
             case 4:
+            case 13:
+            case 15:
                 if(rc.canDigDirt(rc.getLocation().directionTo(myHQ)))
                     rc.digDirt(rc.getLocation().directionTo(myHQ));
                 else if (rc.canDigDirt(rc.getLocation().directionTo(positions[14])))
@@ -738,20 +761,106 @@ public strictfp class RobotPlayer {
                 break;
         }
     }
-    static int getMyPosition(Direction dir) {
-        switch (dir) {
-            case WEST:          return 1;
-            case SOUTHWEST:     return 2;
-            case SOUTH:         return 3;
-            case SOUTHEAST:     return 4;
-            case EAST:          return 5;
-            case NORTHEAST:     return 6;
-            case NORTH:         return 7;
-            case NORTHWEST:     return 8;
-            default:            return 0;
+    static void despositDirtAtLowest() throws GameActionException {
+        switch (myPosition) {
+            case 9:
+                if (rc.senseElevation(positions[1]) > rc.senseElevation(positions[8])) {
+                    if (rc.canDepositDirt(rc.getLocation().directionTo(positions[8])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[8]));
+                    else if (rc.canDepositDirt(rc.getLocation().directionTo(positions[1])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[1]));
+                } else {
+                    if (rc.canDepositDirt(rc.getLocation().directionTo(positions[1])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[1]));
+                    else if (rc.canDepositDirt(rc.getLocation().directionTo(positions[8])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[8]));
+                }
+            case 11:
+                if (rc.senseElevation(positions[1]) > rc.senseElevation(positions[2])) {
+                    if (rc.canDepositDirt(rc.getLocation().directionTo(positions[2])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[2]));
+                    else if (rc.canDepositDirt(rc.getLocation().directionTo(positions[1])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[1]));
+                } else {
+                    if (rc.canDepositDirt(rc.getLocation().directionTo(positions[1])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[1]));
+                    else if (rc.canDepositDirt(rc.getLocation().directionTo(positions[2])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[2]));
+                }
+            case 13:
+                if (rc.senseElevation(positions[3]) > rc.senseElevation(positions[2])) {
+                    if (rc.canDepositDirt(rc.getLocation().directionTo(positions[2])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[2]));
+                    else if (rc.canDepositDirt(rc.getLocation().directionTo(positions[3])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[3]));
+                } else {
+                    if (rc.canDepositDirt(rc.getLocation().directionTo(positions[3])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[3]));
+                    else if (rc.canDepositDirt(rc.getLocation().directionTo(positions[2])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[2]));
+                }
+            case 15:
+                if (rc.senseElevation(positions[3]) > rc.senseElevation(positions[4])) {
+                    if (rc.canDepositDirt(rc.getLocation().directionTo(positions[4])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[4]));
+                    else if (rc.canDepositDirt(rc.getLocation().directionTo(positions[3])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[3]));
+                } else {
+                    if (rc.canDepositDirt(rc.getLocation().directionTo(positions[3])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[3]));
+                    else if (rc.canDepositDirt(rc.getLocation().directionTo(positions[4])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[4]));
+                }
+            case 17:
+                if (rc.senseElevation(positions[5]) > rc.senseElevation(positions[4])) {
+                    if (rc.canDepositDirt(rc.getLocation().directionTo(positions[4])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[4]));
+                    else if (rc.canDepositDirt(rc.getLocation().directionTo(positions[5])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[5]));
+                } else {
+                    if (rc.canDepositDirt(rc.getLocation().directionTo(positions[5])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[5]));
+                    else if (rc.canDepositDirt(rc.getLocation().directionTo(positions[4])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[4]));
+                }
+            case 19:
+                if (rc.senseElevation(positions[5]) > rc.senseElevation(positions[6])) {
+                    if (rc.canDepositDirt(rc.getLocation().directionTo(positions[6])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[6]));
+                    else if (rc.canDepositDirt(rc.getLocation().directionTo(positions[5])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[5]));
+                } else {
+                    if (rc.canDepositDirt(rc.getLocation().directionTo(positions[5])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[5]));
+                    else if (rc.canDepositDirt(rc.getLocation().directionTo(positions[6])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[6]));
+                }
+            case 21:
+                if (rc.senseElevation(positions[6]) > rc.senseElevation(positions[7])) {
+                    if (rc.canDepositDirt(rc.getLocation().directionTo(positions[7])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[7]));
+                    else if (rc.canDepositDirt(rc.getLocation().directionTo(positions[6])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[6]));
+                } else {
+                    if (rc.canDepositDirt(rc.getLocation().directionTo(positions[6])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[6]));
+                    else if (rc.canDepositDirt(rc.getLocation().directionTo(positions[7])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[7]));
+                }
+            case 23:
+                if (rc.senseElevation(positions[7]) > rc.senseElevation(positions[8])) {
+                    if (rc.canDepositDirt(rc.getLocation().directionTo(positions[8])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[8]));
+                    else if (rc.canDepositDirt(rc.getLocation().directionTo(positions[7])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[7]));
+                } else {
+                    if (rc.canDepositDirt(rc.getLocation().directionTo(positions[7])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[7]));
+                    else if (rc.canDepositDirt(rc.getLocation().directionTo(positions[8])))
+                        rc.depositDirt(rc.getLocation().directionTo(positions[8]));
+                }
         }
     }
-
     static void runFulfillmentCenter() throws GameActionException {
         for (Direction dir : directions)
             tryBuild(RobotType.DELIVERY_DRONE, dir);
