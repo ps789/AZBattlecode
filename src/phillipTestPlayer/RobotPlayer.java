@@ -65,9 +65,11 @@ public strictfp class RobotPlayer {
         switch (rc.getType()) {
             case HQ:                 runHQ();                break;
             case MINER:              {
-            	if(rc.getRoundNum()<=2)
-            			runMinerAttack();
-            	else {
+            	if(rc.getRoundNum()==2)
+            		runMinerAttack();
+            	else if(rc.getRoundNum()==3){
+            		runMinerAttack2();
+            	}else {
             		runMiner();
             	}
             }
@@ -184,20 +186,18 @@ public strictfp class RobotPlayer {
 
             if(rc.isReady()) {
                 turnCount++;
-                if(turnCount%3 == 0) {
-                	MapLocation refinery = hasRefinery();
-                	if(refinery != null) {
-                		myHQ = refinery;
-                	}else {
-	                	if(shouldIBuildRefinery()) {
-	                		for(Direction direction : directions) {
-	                			if(tryBuild(RobotType.REFINERY, direction)){
-	                				continue;
-	                			}
-	                		}
-	                	}
+            	MapLocation refinery = hasRefinery();
+            	if(refinery != null) {
+            		myHQ = refinery;
+            	}else {
+                	if(shouldIBuildRefinery() ) {
+                		for(Direction direction : directions) {
+                			if(tryBuild(RobotType.REFINERY, direction)){
+                				continue;
+                			}
+                		}
                 	}
-                }
+            	}
                 if(!schoolBuilt && rc.getLocation().isAdjacentTo(schoolLocation) &&
                         rc.getTeamSoup() >= 150 && rc.getRoundNum() > 15) {
                     RobotInfo ri = rc.senseRobotAtLocation(schoolLocation);
@@ -345,24 +345,33 @@ public strictfp class RobotPlayer {
             }
         }
     }
-    static void runMinerAttack() throws GameActionException{
-        MapLocation myLocation  = rc.getLocation();
-        Direction bugDirection = null;
-        if(myLocation.x < rc.getMapWidth()/2) {
-            mySide = Direction.WEST;
-        } else {
-            mySide = Direction.EAST;
+    static void runMinerAttack2() throws GameActionException{
+        while(mySide == Direction.CENTER) {
+            if(rc.getRoundNum() > 1) {
+                readInitialMessage();
+            }
         }
-        myHQ = rc.adjacentLocation(mySide);
+    	runMinerAttackTemplate(new MapLocation[]{(new MapLocation(myHQ.x, rc.getMapHeight()-myHQ.y-1)),
+        		(new MapLocation(rc.getMapWidth()-myHQ.x-1, rc.getMapHeight()-myHQ.y-1))});
+    }
+
+    static void runMinerAttack() throws GameActionException{
+        while(mySide == Direction.CENTER) {
+            if(rc.getRoundNum() > 1) {
+                readInitialMessage();
+            }
+        }
+    	runMinerAttackTemplate(new MapLocation[]{new MapLocation(rc.getMapWidth()-myHQ.x-1, myHQ.y)});
+    }
+
+    static void runMinerAttackTemplate(MapLocation[] targetLocations) throws GameActionException{
+        Direction bugDirection = null;
         int currentChecking = 0;
         boolean foundHQ = false;
-        MapLocation[] targetLocations = new MapLocation[]{(new MapLocation(rc.getMapWidth(), rc.getMapHeight()-myHQ.y-1)),
-        		(new MapLocation(rc.getMapWidth()-myHQ.x-1, rc.getMapHeight()-myHQ.y-1)),
-                (new MapLocation(rc.getMapWidth()-myHQ.x-1, myHQ.y))};
         while(true) {
             if(rc.isReady()) {
                 turnCount++;
-                if(turnCount%100 == 0 && !foundHQ) {
+                if(turnCount%80 == 0 && !foundHQ) {
                     currentChecking++;
                 }
                 if(foundHQ && rc.getLocation().isAdjacentTo(targetLocations[currentChecking])) {
@@ -373,25 +382,28 @@ public strictfp class RobotPlayer {
 	                	}
                 	}
                     Clock.yield();
+                    runMiner();
                 }else {
-                    if(currentChecking == 3) {
-                        while(true) {
-                            Clock.yield();
-                        }
+                    if(currentChecking >= targetLocations.length) {
+                        runMiner();
                     }else {
-                        if(rc.canSenseLocation(targetLocations[currentChecking]) && (rc.senseRobotAtLocation(targetLocations[currentChecking]) == null || !rc.senseRobotAtLocation(targetLocations[currentChecking]).getType().equals(RobotType.HQ))) {
-                            currentChecking++;
-                        }
                         if(rc.canSenseLocation(targetLocations[currentChecking]) && !(rc.senseRobotAtLocation(targetLocations[currentChecking]) == null) && rc.senseRobotAtLocation(targetLocations[currentChecking]).getType().equals(RobotType.HQ)) {
                             foundHQ = true;
                         }
-                        bugDirection = bugMoveMine(targetLocations[currentChecking], bugDirection);
+                        else if(rc.canSenseLocation(targetLocations[currentChecking]) && (rc.senseRobotAtLocation(targetLocations[currentChecking]) == null || !rc.senseRobotAtLocation(targetLocations[currentChecking]).getType().equals(RobotType.HQ))) {
+                            currentChecking++;
+                        }
+                        if(currentChecking >= targetLocations.length) {
+                        	runMiner();
+                        }else {
+                        	bugDirection = bugMoveMine(targetLocations[currentChecking], bugDirection);
+                        }
                     }
                 }
             }
         }
+    	
     }
-
     static boolean tryMove(Direction dir) throws GameActionException {
         // System.out.println("I am trying to move " + dir + "; " + rc.isReady() + " " + rc.getCooldownTurns() + " " + rc.canMove(dir));
         if (rc.isReady() && rc.canMove(dir)) {
@@ -411,7 +423,15 @@ public strictfp class RobotPlayer {
             Clock.yield();
         }
     }
-
+    static MapLocation getHQForMiner() throws GameActionException{
+    	RobotInfo[] nearbyRobots = rc.senseNearbyRobots(35, rc.getTeam());
+		for(RobotInfo robot : nearbyRobots) {
+			if(robot.getType().equals(RobotType.HQ)) {
+				return robot.getLocation();
+			}
+		}
+		return rc.getLocation();
+    }
     static void runDesignSchool() throws GameActionException {
         while(mySide == Direction.CENTER) {
             readInitialMessage();
