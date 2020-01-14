@@ -78,38 +78,38 @@ public strictfp class RobotPlayer {
 
     }
     static MapLocation shouldIBuildRefinery() throws GameActionException{
-        int currentSoup = 0;
-        MapLocation closestSoup = null;
-        for(int i = -5; i<6; i++) {
+    	int currentSoup = 0;
+    	MapLocation closestSoup = null;
+    	for(int i = -5; i<6; i++) {
             for(int j = -5; j < 6; j++) {
                 if(rc.canSenseLocation(rc.getLocation().translate(i,  j))) {
                     int sensedSoup = rc.senseSoup(rc.getLocation().translate(i,  j));
                     if(sensedSoup > 0) {
-                        currentSoup += sensedSoup;
-                        if(closestSoup == null) {
-                            closestSoup = rc.getLocation().translate(i,  j);
-                        }else {
-                            if(rc.getLocation().distanceSquaredTo(rc.getLocation().translate(i, j))<rc.getLocation().distanceSquaredTo(closestSoup)) {
-                                closestSoup = rc.getLocation().translate(i, j);
-                            }
-                        }
+                    	currentSoup += sensedSoup;
+                    	if(closestSoup == null) {
+                    		closestSoup = rc.getLocation().translate(i,  j);
+                    	}else {
+                    		if(rc.getLocation().distanceSquaredTo(rc.getLocation().translate(i, j))<rc.getLocation().distanceSquaredTo(closestSoup)) {
+                    			closestSoup = rc.getLocation().translate(i, j);
+                    		}
+                    	}
                     }
                 }
             }
         }
-        if (currentSoup >= 200 && (rc.getLocation().distanceSquaredTo(myHQ) > 25)) {
-
-        }
-        return closestSoup;
+    	if (!(currentSoup >= 200 && (rc.getLocation().distanceSquaredTo(myHQ) > 25))) {
+    		return null;
+    	}
+    	return closestSoup;
     }
     static MapLocation hasRefinery() throws GameActionException{
-        RobotInfo[] nearbyRobots = rc.senseNearbyRobots(35, rc.getTeam());
-        for(RobotInfo robot : nearbyRobots) {
-            if(robot.getType().equals(RobotType.REFINERY)) {
-                return robot.getLocation();
-            }
-        }
-        return null;
+    	RobotInfo[] nearbyRobots = rc.senseNearbyRobots(35, rc.getTeam());
+		for(RobotInfo robot : nearbyRobots) {
+			if(robot.getType().equals(RobotType.REFINERY)) {
+				return robot.getLocation();
+			}
+		}
+		return null;
     }
     static boolean hasDesignSchool() throws GameActionException{
         RobotInfo[] nearbyRobots = rc.senseNearbyRobots(35, rc.getTeam());
@@ -164,16 +164,16 @@ public strictfp class RobotPlayer {
                 readInitialMessage();
             }
         }
-
+        
         MapLocation schoolLocation = myHQ.add(mySide.rotateRight().rotateRight().rotateRight())
-                .add(mySide.rotateRight().rotateRight().rotateRight());
+                                         .add(mySide.rotateRight().rotateRight().rotateRight());
         MapLocation targetLocation = rc.getLocation();
         Direction setDirection = randomDirection();
         boolean foundSoup = false;
         boolean schoolBuilt = false;
         Direction bugDirection = null;
         Direction bugDirection2 = null;
-        int returnCount = 0;
+    	int returnCount = 0;
         setPositionsAroundHQ(myHQ);
 
         while(true) {
@@ -210,29 +210,29 @@ public strictfp class RobotPlayer {
                     }
                 } else {
                     // If full return to base
-                    if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
-                        returnCount++;
-                        MapLocation refinery = hasRefinery();
-                        if(refinery != null) {
-                            myHQ = refinery;
-                        }else {
-                            MapLocation closestSoup = shouldIBuildRefinery();
-                            if(closestSoup != null) {
-                                for(Direction direction : directions) {
-                                    if(tryBuild(RobotType.REFINERY, direction)){
-                                        returnCount = 0;
-                                        continue;
-                                    }
-                                }if(rc.getLocation().distanceSquaredTo(closestSoup)< rc.getLocation().distanceSquaredTo(targetLocation)) {
-                                    targetLocation = closestSoup;
-                                }
-                            }
-                        }
-                        if(returnCount < 100) {
-                            bugDirection2 = bugMoveReturn(bugDirection2);
-                            returnCount++;
-                        }else {
-                            if (turnCount%10==0) {
+                	if(rc.getSoupCarrying()>=RobotType.MINER.soupLimit) {
+                    	returnCount++;
+                    	MapLocation refinery = hasRefinery();
+                    	if(refinery != null) {
+                    		myHQ = refinery;
+                    	}else {
+                    		MapLocation closestSoup = shouldIBuildRefinery();
+                        	if(closestSoup != null) {
+                        		for(Direction direction : directions) {
+                        			if(tryBuild(RobotType.REFINERY, direction)){
+                        				returnCount = 0;
+                        				continue;
+                        			}
+                        		}if(rc.getLocation().distanceSquaredTo(closestSoup)< rc.getLocation().distanceSquaredTo(targetLocation)) {
+                        			targetLocation = closestSoup;
+                        		}
+                        	}
+                    	}
+                    	if(returnCount < 100) {
+                    		bugDirection2 = bugMoveReturn(bugDirection2);
+                    		returnCount++;
+                    	}else {
+                    		if (turnCount%10==0) {
                                 Direction newDirection = randomDirection();
                                 while(newDirection == setDirection) {
                                     newDirection = randomDirection();
@@ -242,9 +242,9 @@ public strictfp class RobotPlayer {
                             while((rc.canSenseLocation(rc.adjacentLocation(setDirection)) && rc.senseFlooding(rc.adjacentLocation(setDirection))) || !rc.canMove(setDirection))
                                 setDirection = directions[(int)(Math.random()*8)];
                             tryMove(setDirection);
-                        }
+                    	}
                     }else {
-                        returnCount = 0;
+                    	returnCount = 0;
                         for(Direction dir : directions) {
                             if(rc.canSenseLocation(rc.adjacentLocation(dir)) && rc.senseSoup(rc.adjacentLocation(dir))>0) {
                                 foundSoup = true;
@@ -470,8 +470,8 @@ public strictfp class RobotPlayer {
         while(mySide == Direction.CENTER) {
             readInitialMessage();
         }
-
-        int costLimiter = 150;
+        //HYPERPARAMETER
+        int costLimiter = 220;
         int increment = 2;
         RobotInfo[] enemies = rc.senseNearbyRobots(-1, rc.getTeam().opponent());
         for(RobotInfo ri : enemies) {
