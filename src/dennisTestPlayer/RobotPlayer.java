@@ -430,10 +430,12 @@ public strictfp class RobotPlayer {
                         runMiner();
                     }else {
                         if(rc.canSenseLocation(targetLocations[currentChecking]) && !(rc.senseRobotAtLocation(targetLocations[currentChecking]) == null) && rc.senseRobotAtLocation(targetLocations[currentChecking]).getType().equals(RobotType.HQ)) {
-                            foundHQ = true;
+                            turnCount = 1;
+                        	foundHQ = true;
                         }
                         else if(rc.canSenseLocation(targetLocations[currentChecking]) && (rc.senseRobotAtLocation(targetLocations[currentChecking]) == null || !rc.senseRobotAtLocation(targetLocations[currentChecking]).getType().equals(RobotType.HQ))) {
-                            currentChecking++;
+                            turnCount = 1;
+                        	currentChecking++;
                         }
                         if(currentChecking >= targetLocations.length) {
                             runMiner();
